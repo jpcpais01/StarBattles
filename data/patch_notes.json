@@ -4,7 +4,9 @@
 			"title": "New ship: Silverwing",
 			"time": "2026-10-25 · 14:00 UTC",
 			"entries": [
-				"New starfighter: the Silverwing, a swept-wing strike fighter with twin-barrel cannons on each wingtip. Its guns swivel to track your target, kick back with every shot and glow when they overheat, and its three engines blaze with thrust."
+				"New starfighter: the Silverwing, a swept-wing strike fighter with twin-barrel cannons on each wingtip. Its guns swivel to track your target, kick back with every shot and glow when they overheat, and its three engines blaze with thrust.",
+				"PC: proper fullscreen. The game now starts in borderless fullscreen; press F11 or Alt+Enter to switch any time, or pick Windowed, Fullscreen or Exclusive in Settings › Graphics. Your choice is remembered.",
+				"Mouse flying feels like a joystick now: the aim reticle stays where you push it and your ship keeps turning toward it, so you no longer have to keep dragging the mouse. Pull it back to the centre to fly straight, or tap X / middle mouse to snap it home. Deadzone and an optional auto-centre are in Settings › Controls."
 			]
 		},
 		{

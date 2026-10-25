@@ -47,8 +47,13 @@ func _show_tab(i: int) -> void:
 			_selector("Frame rate cap", ["30", "60", "90", "120", "UNLIMITED"], "fps_limit", Settings.FPS_OPTIONS)
 			_slider("Field of view", "fov", 60.0, 95.0, 1.0, func(v): return "%d°" % int(v))
 			_toggle("Show FPS counter", "show_fps")
+			if not App.is_mobile:
+				_selector("Display mode  (F11 / Alt+Enter)", Settings.WINDOW_MODE_NAMES, "window_mode", [0, 1, 2])
 		1:
 			_slider("Mouse sensitivity", "mouse_sens", 0.2, 3.0, 0.05, func(v): return "%.2f×" % v)
+			if not App.is_mobile:
+				_slider("Mouse aim deadzone", "mouse_deadzone", 0.0, 0.3, 0.01, func(v): return "%d%%" % int(v * 100.0))
+				_toggle("Mouse aim returns to centre", "mouse_recenter")
 			_slider("Touch sensitivity", "touch_sens", 0.3, 2.5, 0.05, func(v): return "%.2f×" % v)
 			_toggle("Invert pitch", "invert_y")
 			_toggle("Vibration", "haptics")
@@ -141,7 +146,7 @@ func _toggle(label_text: String, key: String) -> void:
 
 
 func _keys() -> void:
-	var l := UI.label("Keyboard & mouse: mouse steers · W/S throttle · A/D roll · Q/E strafe · Shift boost · LMB fire · RMB missiles · F target · C look back · Tab scores", 17, App.TEXT_DIM)
+	var l := UI.label("Keyboard & mouse: mouse moves the aim reticle and the ship turns toward it · W/S throttle · A/D roll · Q/E strafe · Shift boost · LMB fire · RMB missiles · F target · C look back · X / middle mouse re-centre aim · F11 fullscreen · Tab scores", 17, App.TEXT_DIM)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(UI.margin(l, 0, 14, 0, 4))
 	var g := UI.label("Gamepad: left stick steers · right stick roll/throttle · RT fire · LT missiles · RB boost · LB target", 17, App.TEXT_DIM)

@@ -5,7 +5,7 @@ Writes the master icon.svg plus every raster the exports need:
   assets/icon/icon_1024.png           master raster (project / store art)
   assets/icon/android_main_192.png    legacy launcher icon
   assets/icon/android_fg_432.png      adaptive foreground (ship, safe zone)
-  assets/icon/android_bg_432.png      adaptive background (space + Saturn)
+  assets/icon/android_bg_432.png      adaptive background (space + Jupiter)
   assets/icon/android_mono_432.png    themed (monochrome) icon
   assets/icon/icon.ico                Windows exe icon (16..256)
 
@@ -134,9 +134,23 @@ DEFS = """
     <stop offset="1" stop-color="#c79c62" stop-opacity="0"/>
   </linearGradient>
   <radialGradient id="atmo" cx="50%" cy="50%" r="50%">
-    <stop offset="0.86" stop-color="#ffcf8a" stop-opacity="0"/>
-    <stop offset="0.95" stop-color="#ffd9a0" stop-opacity="0.5"/>
+    <stop offset="0.9" stop-color="#ffd9a0" stop-opacity="0.55"/>
     <stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="limb" cx="28%" cy="22%" r="88%">
+    <stop offset="0" stop-color="#fff8e8" stop-opacity="0.35"/>
+    <stop offset="0.35" stop-color="#000" stop-opacity="0"/>
+    <stop offset="0.72" stop-color="#140800" stop-opacity="0.55"/>
+    <stop offset="1" stop-color="#050200" stop-opacity="0.95"/>
+  </radialGradient>
+  <radialGradient id="io" cx="35%" cy="30%" r="75%">
+    <stop offset="0" stop-color="#fff3a8"/>
+    <stop offset="0.5" stop-color="#e9c24a"/>
+    <stop offset="1" stop-color="#9a6a1a"/>
+  </radialGradient>
+  <radialGradient id="moonShade" cx="30%" cy="25%" r="85%">
+    <stop offset="0.45" stop-color="#000" stop-opacity="0"/>
+    <stop offset="1" stop-color="#000" stop-opacity="0.85"/>
   </radialGradient>
   <linearGradient id="hullLit" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#ffffff"/>
@@ -214,26 +228,43 @@ def stars(n, size, seed=7):
 
 
 def backdrop(size):
-    """Space, team-coloured nebulae and a ringed Saturn in the lower right."""
+    """Space, team-coloured nebulae, Io, and Jupiter in the lower right."""
     k = size / 512.0
     return (
         f'<rect width="{size}" height="{size}" fill="url(#space)"/>'
         f'<ellipse cx="{120 * k}" cy="{400 * k}" rx="{260 * k}" ry="{200 * k}" fill="url(#nebBlue)"/>'
         f'<ellipse cx="{430 * k}" cy="{90 * k}" rx="{220 * k}" ry="{170 * k}" fill="url(#nebOrange)"/>'
         + stars(70, size) +
-        f'<g transform="translate({405 * k} {418 * k}) scale({k}) rotate(-28)">'
-        '<clipPath id="pc"><circle r="140"/></clipPath>'
-        # back half of the ring
-        '<path d="M-262 0 A262 54 0 0 1 262 0" fill="none" stroke="url(#ring)" stroke-width="20" opacity="0.75"/>'
-        '<path d="M-226 0 A226 44 0 0 1 226 0" fill="none" stroke="url(#ring)" stroke-width="9" opacity="0.55"/>'
-        '<circle r="140" fill="url(#planet)"/>'
-        '<rect x="-140" y="-140" width="280" height="280" fill="url(#bands)" clip-path="url(#pc)"/>'
-        '<circle r="146" fill="url(#atmo)"/>'
-        # ring shadow on the planet, then the front half of the ring
-        '<path d="M-140 18 A190 34 0 0 0 140 18" fill="none" stroke="#1a0d04" stroke-width="14" opacity="0.35" clip-path="url(#pc)"/>'
-        '<path d="M-262 0 A262 54 0 0 0 262 0" fill="none" stroke="url(#ring)" stroke-width="20"/>'
-        '<path d="M-226 0 A226 44 0 0 0 226 0" fill="none" stroke="url(#ring)" stroke-width="9" opacity="0.8"/>'
-        '<path d="M-248 4 A248 50 0 0 0 248 4" fill="none" stroke="#fff4dc" stroke-width="2" opacity="0.55"/>'
+        # Io, small and sulphur-yellow, off in the distance.
+        f'<g transform="translate({438 * k} {104 * k}) scale({k})">'
+        '<circle r="24" fill="url(#io)"/>'
+        '<circle cx="-6" cy="4" r="4" fill="#b5651d" opacity="0.6"/>'
+        '<circle cx="7" cy="-7" r="2.6" fill="#8a3a12" opacity="0.6"/>'
+        '<circle cx="5" cy="9" r="3" fill="#fff6c8" opacity="0.5"/>'
+        '<circle r="24" fill="url(#moonShade)"/>'
+        '</g>'
+        # Jupiter: banded disc with the Great Red Spot, lit from the upper left.
+        f'<g transform="translate({410 * k} {420 * k}) scale({k}) rotate(-18)">'
+        '<clipPath id="pc"><circle r="190"/></clipPath>'
+        '<circle r="198" fill="url(#atmo)"/>'
+        '<g clip-path="url(#pc)">'
+        '<rect x="-200" y="-200" width="400" height="400" fill="#e9d6b4"/>'
+        + "".join(f'<rect x="-200" y="{y}" width="400" height="{h}" fill="{c}" opacity="{o}"/>'
+                  for y, h, c, o in (
+                      (-190, 40, "#9c7a5a", 0.7), (-150, 14, "#c9a27a", 0.8), (-122, 30, "#b5774a", 0.85),
+                      (-84, 10, "#f4e6cc", 0.9), (-60, 34, "#a8603a", 0.9), (-22, 8, "#d79a6a", 0.8),
+                      (8, 26, "#f7ead2", 0.9), (40, 30, "#b8784c", 0.85), (78, 10, "#e3c39a", 0.8),
+                      (96, 22, "#9a6a48", 0.75), (132, 16, "#cfae88", 0.7), (156, 40, "#8a6a52", 0.7))) +
+        # turbulent edges between belts
+        '<path d="M-200 -26 Q-150 -34 -100 -24 T0 -26 T100 -22 T200 -28" fill="none" stroke="#f4e2c4" stroke-width="4" opacity="0.6"/>'
+        '<path d="M-200 70 Q-140 62 -90 72 T20 68 T120 74 T200 66" fill="none" stroke="#7a4426" stroke-width="5" opacity="0.45"/>'
+        '<ellipse cx="-70" cy="-36" rx="34" ry="17" fill="#c8552e"/>'
+        '<ellipse cx="-70" cy="-36" rx="24" ry="11" fill="#e07a4a"/>'
+        '<ellipse cx="-74" cy="-38" rx="10" ry="5" fill="#f2a978" opacity="0.8"/>'
+        '<ellipse cx="-70" cy="-36" rx="40" ry="22" fill="none" stroke="#f6e7cf" stroke-width="3" opacity="0.6"/>'
+        '<ellipse cx="40" cy="60" rx="10" ry="5" fill="#fff4e0" opacity="0.7"/>'
+        '<circle r="190" fill="url(#limb)"/>'
+        '</g>'
         '</g>'
     )
 

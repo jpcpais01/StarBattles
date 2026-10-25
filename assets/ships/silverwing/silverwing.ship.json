@@ -1,0 +1,99 @@
+{
+  "id": "silverwing",
+  "radius": 8.42,
+  "hull_nodes": [
+    "hull",
+    "canopy"
+  ],
+  "hardpoints": [
+    {
+      "name": "turret_0",
+      "pos": [
+        -7.488,
+        -0.4055,
+        1.6467
+      ],
+      "base_node": "turret_0_base",
+      "barrel_node": "turret_0_barrel",
+      "muzzle": [
+        -7.4679,
+        -0.3549,
+        -1.0855
+      ],
+      "muzzles": [
+        [
+          -7.4661,
+          -0.2002,
+          -1.0855
+        ],
+        [
+          -7.4697,
+          -0.5096,
+          -1.0855
+        ]
+      ],
+      "weapon": "pulse_cannon",
+      "gimbal": 8.0,
+      "turret": false
+    },
+    {
+      "name": "turret_1",
+      "pos": [
+        7.5003,
+        -0.4137,
+        1.704
+      ],
+      "base_node": "turret_1_base",
+      "barrel_node": "turret_1_barrel",
+      "muzzle": [
+        7.4391,
+        -0.3248,
+        -1.0855
+      ],
+      "muzzles": [
+        [
+          7.4378,
+          -0.1742,
+          -1.0855
+        ],
+        [
+          7.4405,
+          -0.4754,
+          -1.0855
+        ]
+      ],
+      "weapon": "pulse_cannon",
+      "gimbal": 8.0,
+      "turret": false
+    }
+  ],
+  "engines": [
+    {
+      "node": "engine_0",
+      "pos": [
+        -1.3685,
+        0.0979,
+        7.9263
+      ],
+      "radius": 0.3277
+    },
+    {
+      "node": "engine_1",
+      "pos": [
+        0.0294,
+        0.2417,
+        7.6395
+      ],
+      "radius": 0.3154
+    },
+    {
+      "node": "engine_2",
+      "pos": [
+        1.4125,
+        0.1009,
+        7.9263
+      ],
+      "radius": 0.3236
+    }
+  ]
+}

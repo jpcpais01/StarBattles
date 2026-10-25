@@ -135,6 +135,19 @@ const WEAPONS := {
 		"vs_shield": 0.85, "vs_hull": 1.2,
 		"color": Color(1.0, 0.6, 0.3), "sound": "missile",
 	},
+	# Mothership batteries (Siege). Not mountable on fighters.
+	"capital_flak": {
+		"name": "Flak Battery", "type": "projectile", "group": 0, "model": "cannon",
+		"damage": 18.0, "speed": 1150.0, "range": 1750.0, "spread": 0.7, "size": 1.7,
+		"vs_shield": 1.0, "vs_hull": 1.0,
+		"color": Color(0.55, 0.88, 1.0), "sound": "flak",
+	},
+	"capital_cannon": {
+		"name": "Heavy Cannon", "type": "projectile", "group": 0, "model": "cannon",
+		"damage": 130.0, "speed": 760.0, "range": 2800.0, "spread": 0.2, "size": 4.0,
+		"vs_shield": 1.1, "vs_hull": 1.0,
+		"color": Color(0.4, 0.7, 1.0), "sound": "cannon",
+	},
 }
 
 

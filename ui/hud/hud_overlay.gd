@@ -118,9 +118,9 @@ func _draw() -> void:
 		var col := Color(0.5, 0.8, 1.0, a) if d[2] else Color(1.0, 0.25, 0.2, a)
 		draw_arc(center, 150.0 * scale_f, ang - 0.28, ang + 0.28, 16, col, 6.0 * scale_f, true)
 	# Lock ring.
-	var lt := me.lock_target
-	if lt and lt.alive and not cam.is_position_behind(lt.global_position):
-		var lp := cam.unproject_position(lt.global_position)
+	var lt = me.lock_target
+	if lt and is_instance_valid(lt) and lt.alive and not cam.is_position_behind(lt.global_position):
+		var lp := cam.unproject_position(lt.aim_center() if lt is MothershipPart else lt.global_position)
 		var lr := 34.0 * scale_f
 		var lc := App.BAD if me.lock_progress >= 1.0 else App.WARN
 		draw_arc(lp, lr, -PI * 0.5, -PI * 0.5 + TAU * me.lock_progress, 48, lc, 2.5 * scale_f, true)
@@ -168,7 +168,7 @@ func _brackets(p: Vector2, s: float, col: Color, w: float) -> void:
 
 func _draw_ships(cam: Camera3D, me: Ship, scale_f: float) -> void:
 	var center := size * 0.5
-	var tgt: Ship = me.target
+	var tgt = me.target
 	for s in arena.ships:
 		if s == me or not s.alive:
 			continue

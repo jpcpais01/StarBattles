@@ -53,3 +53,17 @@ scales it to game space, writes vertex colour masks, and writes the GLB and the
 `.ship.json` above. Each ship has a small config in `tools/ship_import/configs/`,
 and the raw Meshy file stays in `assets_src/`. See `tools/ship_import/README.md`.
 Budget: ~30k triangles per ship.
+
+## Capital ships
+
+Capital ships (the IRON VANGUARD mothership in Mothership Siege) go through
+`tools/ship_import/capital_split.py` instead. A carrier has no single dominant
+hull piece, so it is cut into hull sections along its length (these drift apart
+when it breaks up), engine bells are found at the stern, and the turrets,
+shield generators and reactor are *not* taken from the model: hardpoints are
+placed by raycasting onto the hull from the faces listed in the config, and the
+game builds procedural turrets on them (`game/siege/mothership_part.gd`). The
+`.capital.json` holds sections, engines, hardpoints with surface normals,
+sampled hull points (used for breaches, bot strafing runs and the
+destruction chain) and beacon positions. Material: `shaders/capital_hull.gdshader`
+(plating, lit windows, battle damage). Budget: ~30k triangles.

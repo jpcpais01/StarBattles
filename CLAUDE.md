@@ -13,6 +13,9 @@ main target; every build also ships a single-file Windows .exe.
   rules, bots, respawns and netcode; `ship.gd`, `weapon_mount.gd`,
   `engine_fx.gd`, `asteroid_field.gd`, `projectiles.gd`; `procgen/` builds
   placeholder hulls, weapons and asteroids; `env/space_env.gd` is Saturn + sky.
+  `siege/` is Mothership Siege: `siege_rules.gd` (stages, tickets, turret AI,
+  server-authoritative damage), `mothership.gd` (the carrier and its set
+  pieces) and `mothership_part.gd` (turrets, shield generators, reactor).
 - `ui/` — `kit/` shared widgets and theme, `boot/` loading screen, `menu/` home
   screen and pages, `hud/` in-battle HUD.
 - `shaders/` — all materials are custom shaders (no textures).
@@ -37,5 +40,7 @@ hits. Asteroid motion is a pure function of match time.
 - Don't run render/perf benchmarks in CI containers; logic checks are fine:
   `godot --headless --script tools/check_scripts.gd` and
   `godot --headless -- --autotest=20` (boots, plays a bot match, prints a report).
+  Add `--mode=siege` (and `--team=0` to defend) for a siege match, and
+  `--fixed-fps 60` before `--` to run a long match faster than real time.
   Add `--join=127.0.0.1` with a `--server` instance running to test netcode.
 - `--server` on the command line runs a dedicated, headless host.

@@ -83,6 +83,17 @@ func _draw_glyph() -> void:
 				var d := Vector2.RIGHT.rotated(a * PI * 0.5)
 				g.draw_line(c + d * s * 0.7, c + d * s * 1.3, col, w, true)
 			g.draw_circle(c, 3.5, acc)
+		"siege":
+			# Capital ship in profile under its shield bubble.
+			var hull := PackedVector2Array([c + Vector2(-s * 1.25, s * 0.15), c + Vector2(-s * 0.55, -s * 0.12),
+				c + Vector2(-s * 0.1, -s * 0.12), c + Vector2(s * 0.05, -s * 0.42), c + Vector2(s * 0.45, -s * 0.42),
+				c + Vector2(s * 0.6, -s * 0.12), c + Vector2(s * 1.2, -s * 0.05), c + Vector2(s * 1.2, s * 0.32),
+				c + Vector2(-s * 0.9, s * 0.38), c + Vector2(-s * 1.25, s * 0.15)])
+			g.draw_polyline(hull, col, w, true)
+			g.draw_arc(c + Vector2(0, s * 0.25), s * 1.35, PI * 1.08, PI * 1.92, 40, Color(acc, 0.85), w, true)
+			for i in 3:
+				g.draw_circle(c + Vector2(s * (1.2 + 0.0), s * (-0.0 + i * 0.13)), 2.5, acc)
+			g.draw_line(c + Vector2(-s * 0.7, s * 0.12), c + Vector2(s * 0.85, s * 0.12), Color(col, 0.5), w - 1.0, true)
 		"multi":
 			for i in 2:
 				var o := c + Vector2((i - 0.5) * s * 1.05, 0.0)

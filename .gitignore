@@ -6,3 +6,4 @@ export_credentials.cfg
 *.translation
 .DS_Store
 config/firebase.json
+__pycache__/

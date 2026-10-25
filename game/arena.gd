@@ -17,6 +17,9 @@ var ships: Array[Ship] = []
 var points: Array[CapturePoint] = []
 var missiles: Array = []
 var local_ship: Ship
+## "conquest" or "siege".
+var mode := "conquest"
+var siege: SiegeRules
 
 var env: SpaceEnv
 var field: AsteroidField
@@ -50,6 +53,7 @@ func _ready() -> void:
 	_ray.collision_mask = 1 | 2
 	var cfg: Dictionary = App.match_config
 	var seed := int(cfg.get("seed", randi()))
+	mode = "siege" if str(cfg.get("mode", "")) == "siege" else "conquest"
 	env = SpaceEnv.new()
 	add_child(env)
 	fx_root = Node3D.new()
@@ -75,11 +79,15 @@ func _ready() -> void:
 	ctl.name = "Match"
 	ctl.arena = self
 	add_child(ctl)
+	if mode == "siege":
+		siege = SiegeRules.new()
+		add_child(siege)
+		siege.setup(self)
 	hud = preload("res://ui/hud/hud.gd").new()
 	hud.arena = self
 	add_child(hud)
 	input.touch = hud.touch
-	for i in POINTS.size():
+	for i in (POINTS.size() if mode == "conquest" else 0):
 		var p := CapturePoint.new()
 		p.setup(i, POINTS[i])
 		add_child(p)
@@ -87,8 +95,10 @@ func _ready() -> void:
 	_build_carriers()
 	await field.prepare_variants()
 	var avoid := []
-	for p in POINTS:
-		avoid.append([p, CapturePoint.RADIUS])
+	for p in points:
+		avoid.append([p.position, CapturePoint.RADIUS])
+	if siege:
+		avoid.append([SiegeRules.POSITION, siege.mothership.half_extents.z + 180.0])
 	for t in 2:
 		avoid.append([Vector3(-2050 if t == 0 else 2050, 0, 0), 260.0])
 	field.populate(seed, avoid)
@@ -107,6 +117,8 @@ func _ready() -> void:
 
 func _build_carriers() -> void:
 	for t in 2:
+		if siege and t == SiegeRules.DEFENDERS:
+			continue  # the IRON VANGUARD is their base
 		var root := Node3D.new()
 		root.name = "Carrier_%d" % t
 		add_child(root)
@@ -147,6 +159,32 @@ func on_local_spawn(s: Ship, initial: bool) -> void:
 	Sfx.play("spawn", -4.0)
 	if not App.is_mobile:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+## Ship or mothership part by network target id (see target_id_of).
+func target_by_id(id: int) -> Node3D:
+	if siege and id >= SiegeRules.TARGET_PART_BASE:
+		return siege.part_by_target_id(id)
+	return ship_by_id(id)
+
+
+func target_id_of(t: Object) -> int:
+	if t is Ship:
+		return (t as Ship).ship_id
+	if t is MothershipPart:
+		return SiegeRules.TARGET_PART_BASE + (t as MothershipPart).index
+	return -1
+
+
+## Everything a pilot on `team` could lock missiles onto.
+func lock_candidates(team: int) -> Array:
+	var out: Array = []
+	for s in ships:
+		if s.alive and s.team != team:
+			out.append(s)
+	if siege:
+		out.append_array(siege.live_targets(team))
+	return out
 
 
 func ship_by_id(id: int) -> Ship:
@@ -193,7 +231,7 @@ static func lead_point(p0: Vector3, v0: Vector3, p1: Vector3, v1: Vector3, speed
 	return p1 + rv * t
 
 
-func on_bolt_hit(shooter_id: int, weapon_id: String, hit: Dictionary, dir: Vector3, color: Color) -> void:
+func on_bolt_hit(shooter_id: int, weapon_id: String, hit: Dictionary, dir: Vector3, color: Color, team := -1) -> void:
 	var col: Object = hit.collider
 	var pos: Vector3 = hit.position
 	if col.has_meta("ship"):
@@ -208,6 +246,13 @@ func on_bolt_hit(shooter_id: int, weapon_id: String, hit: Dictionary, dir: Vecto
 		if multiplayer.is_server():
 			var w := ShipLibrary.weapon(weapon_id)
 			ctl.server_damage(s, float(w.damage), w, shooter_id, pos, false)
+	elif siege and siege.owns(col):
+		siege.hit_fx(col, pos, hit.normal, color, team)
+		if not App.is_dedicated and camera.global_position.distance_to(pos) < 500.0 and randf() < 0.5:
+			Sfx.play_at("hit_shield" if siege.stage == SiegeRules.Stage.SHIELDS else "hit_hull", pos, -8.0, randf_range(0.6, 0.8))
+		if multiplayer.is_server():
+			var w := ShipLibrary.weapon(weapon_id)
+			siege.damage_collider(col, float(w.damage), w, shooter_id, team)
 	elif col.has_meta("asteroid"):
 		var id := int(col.get_meta("asteroid"))
 		field.rock_hit_fx(id, pos, hit.normal)
@@ -243,11 +288,12 @@ func on_hit_event(attacker_id: int, target_id: int, amount: float, shielded: boo
 		Settings.vibrate(30 if shielded else 60)
 
 
-func on_kill(victim: Ship, killer: Ship, assists: Array) -> void:
-	hud.kill_feed(killer, victim)
+func on_kill(victim: Ship, killer: Ship, assists: Array, killer_id := -1) -> void:
+	var by_mothership := siege != null and killer_id == SiegeRules.MOTHERSHIP_ID
+	hud.kill_feed(killer, victim, Mothership.DISPLAY_NAME if by_mothership else "")
 	if victim == local_ship:
 		camera.orbit_center = victim.global_position
-		hud.on_death(killer)
+		hud.on_death(killer, Mothership.DISPLAY_NAME if by_mothership else "")
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		Settings.vibrate(200)
 	elif killer == local_ship:
@@ -270,8 +316,50 @@ func on_point_neutralized(p: CapturePoint) -> void:
 	hud.toast("Point %s neutralized" % p.letter)
 
 
+# --- Siege events ---------------------------------------------------------------------------
+
+func on_siege_part_destroyed(p: MothershipPart, killer: Ship) -> void:
+	var mine := local_ship != null and local_ship.team == SiegeRules.ATTACKERS
+	if p.kind == "generator":
+		var left := siege.generators_alive()
+		var sub := ("%d generator%s left" % [left, "" if left == 1 else "s"]) if left > 0 else "The shield is failing"
+		hud.banner("GENERATOR DESTROYED" if mine else "GENERATOR LOST", sub, App.team_color(SiegeRules.ATTACKERS if mine else SiegeRules.DEFENDERS))
+	else:
+		hud.toast("%s destroyed%s" % [p.label.capitalize(), (" by " + killer.pilot_name) if killer else ""])
+	if killer and killer == local_ship:
+		hud.notify_points("+%d  %s DOWN" % [int(p.spec.score), p.label])
+		Sfx.play("kill", -2.0)
+
+
+func on_siege_stage(stage: int) -> void:
+	var team := local_ship.team if local_ship else SiegeRules.ATTACKERS
+	var col := App.team_color(SiegeRules.ATTACKERS) if team == SiegeRules.ATTACKERS else App.BAD
+	match stage:
+		SiegeRules.Stage.ARMOR:
+			hud.banner("SHIELDS DOWN", siege.objective_text(team), col)
+			Sfx.play("alarm", -4.0, 0.8)
+		SiegeRules.Stage.REACTOR:
+			hud.banner("REACTOR EXPOSED", siege.objective_text(team), col)
+	camera_shake(0.6)
+
+
+func on_siege_destroyed(killer: Ship) -> void:
+	hud.banner("%s DESTROYED" % Mothership.DISPLAY_NAME, ("Final blow by " + killer.pilot_name) if killer else "The reactor has gone critical", App.team_color(SiegeRules.ATTACKERS))
+	camera.cinematic(siege.mothership, 2600.0, 14.0)
+
+
 func on_match_end(w: int) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if siege and w == SiegeRules.DEFENDERS:
+		hud.banner("%s HOLDS" % Mothership.DISPLAY_NAME, "The carrier jumps to safety", App.team_color(SiegeRules.DEFENDERS))
+		var mark := Node3D.new()
+		add_child(mark)
+		mark.global_position = siege.mothership.global_position
+		siege.mothership.play_warp()
+		camera.cinematic(mark, 2400.0, 5.0)
+		await get_tree().create_timer(3.6).timeout
+		if not is_inside_tree():
+			return
 	var result := {}
 	if local_ship and not _match_recorded:
 		_match_recorded = true
@@ -286,7 +374,9 @@ func leave_match_to_menu() -> void:
 			_net_back_to_lobby.rpc()
 		Net.end_match_to_lobby()
 	if App.is_dedicated:
-		Net.start_match({"seed": randi()})
+		# Dedicated servers alternate between the two modes.
+		Net.match_mode = "conquest" if mode == "siege" else "siege"
+		Net.start_match({"seed": randi(), "mode": Net.match_mode})
 		return
 	App.goto_scene(App.SCENE_MENU)
 
@@ -312,9 +402,34 @@ func _on_session_ended(reason: String) -> void:
 func _process(delta: float) -> void:
 	if App.autotest_seconds > 0.0 and is_scene_ready:
 		_autotest_t += delta
+		if siege and int(_autotest_t / 15.0) != int((_autotest_t - delta) / 15.0):
+			_autotest_siege_line()
 		if _autotest_t >= App.autotest_seconds:
 			App.autotest_seconds = 0.0
 			_autotest_report()
+
+
+## Autotest: what each side is up to, every 15 s of a siege.
+func _autotest_siege_line() -> void:
+	var modes := {}
+	var dist := 0.0
+	var n := 0
+	for s in ships:
+		if s.team != SiegeRules.ATTACKERS or not s.alive or not (s.controller is BotBrain):
+			continue
+		var key: String = BotBrain.Mode.keys()[(s.controller as BotBrain).mode]
+		modes[key] = int(modes.get(key, 0)) + 1
+		dist += s.global_position.distance_to(siege.mothership.global_position)
+		n += 1
+	var hp := []
+	for p in siege.parts():
+		if p.kind == "generator" or p.kind == "core":
+			hp.append(int(p.hp))
+	var turrets := 0
+	for p in siege.parts():
+		turrets += 1 if p.is_turret() and p.alive else 0
+	print("[Autotest] t=%.0f siege %s armor=%.0f tickets=%d gen/core=%s turrets=%d attackers=%s avg_dist=%.0f" % [
+		_autotest_t, siege.stage_name(), siege.armor, siege.tickets, str(hp), turrets, str(modes), dist / maxf(1, n)])
 
 
 func _autotest_report() -> void:
@@ -326,6 +441,13 @@ func _autotest_report() -> void:
 	var owners := []
 	for p in points:
 		owners.append(p.owner_team)
-	print("[Autotest] t=%.1f phase=%d score=%s kills=%s alive=%d points=%s asteroids=%d bolts=%d fps=%d" % [
-		time, ctl.phase, str(ctl.scores), str(k), alive, str(owners), field.records.size(), projectiles.count(), Engine.get_frames_per_second()])
+	print("[Autotest] t=%.1f mode=%s phase=%d score=%s kills=%s alive=%d points=%s asteroids=%d bolts=%d fps=%d" % [
+		time, mode, ctl.phase, str(ctl.scores), str(k), alive, str(owners), field.records.size(), projectiles.count(), Engine.get_frames_per_second()])
+	if siege:
+		var down := []
+		for p in siege.parts():
+			if not p.alive:
+				down.append(p.kind)
+		print("[Autotest] siege stage=%s armor=%.0f tickets=%d generators=%d destroyed=%s winner=%d" % [
+			siege.stage_name(), siege.armor, siege.tickets, siege.generators_alive(), str(down), ctl.winner])
 	get_tree().quit()

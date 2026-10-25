@@ -227,7 +227,8 @@ func _start_dedicated() -> void:
 		get_tree().quit(1)
 		return
 	await get_tree().process_frame
-	Net.start_match({"mode": "dedicated"})
+	Net.match_mode = "siege" if App.cli_mode == "siege" else "conquest"
+	Net.start_match({"mode": Net.match_mode})
 
 
 func _exit_tree() -> void:

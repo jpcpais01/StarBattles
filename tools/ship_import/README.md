@@ -40,3 +40,23 @@ Needs Python 3 and numpy. Output:
 
 Engine nozzle interiors and exhaust plates get G = 1 automatically, so they
 glow with the engine.
+
+## Capital ships
+
+```
+python3 tools/ship_import/capital_split.py tools/ship_import/configs/iron_vanguard.json
+```
+
+Output: `assets/ships/<id>/<id>.glb` with nodes `section_N` (hull slices,
+front to back, split at the config's `section_cuts` as fractions of length)
+and `engine_N`, plus `<id>.capital.json`.
+
+| Key | Meaning |
+|---|---|
+| `section_cuts` | where the hull is sliced into break-up sections (fractions of length along Z) |
+| `paint_fraction` | share of the largest, flattest pieces that get team paint |
+| `hardpoints` | `kind` (`flak`, `heavy`, `generator`, `core`), the `face` to raycast from (`top`, `bottom`, `left`, `right`) and `u`/`v` on that face (fractions of length/width) |
+| `surface_points` | how many hull points to sample for breaches and strafing runs |
+
+Vertex colour masks: R = paint, G = glow (engines, light strips), B = dark
+metal, A = window density.

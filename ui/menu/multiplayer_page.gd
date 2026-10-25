@@ -12,7 +12,7 @@ var _name: LineEdit
 
 func _init() -> void:
 	title_text = "MULTIPLAYER"
-	subtitle_text = "10 v 10 Conquest. Up to 20 pilots; AI wingmen fill the empty seats."
+	subtitle_text = "10 v 10 Conquest or Mothership Siege. Up to 20 pilots; AI wingmen fill the empty seats."
 
 
 func build() -> void:
@@ -85,10 +85,10 @@ func _refresh() -> void:
 	for ip in Net.lan_servers.keys():
 		var d: Dictionary = Net.lan_servers[ip]
 		entries.append({"name": d.get("name", "Battle"), "ip": ip, "port": int(d.get("port", Net.PORT)), "players": int(d.get("players", 0)),
-			"max": int(d.get("max", 20)), "tag": "LAN", "version": str(d.get("version", "")), "in_match": d.get("in_match", false)})
+			"max": int(d.get("max", 20)), "tag": "LAN", "version": str(d.get("version", "")), "in_match": d.get("in_match", false), "mode": str(d.get("mode", "conquest"))})
 	for d in Net.online_servers:
 		entries.append({"name": d.get("name", "Battle"), "ip": d.get("ip", ""), "port": int(d.get("port", Net.PORT)), "players": int(d.get("players", 0)),
-			"max": int(d.get("max", 20)), "tag": "ONLINE", "version": str(d.get("version", "")), "in_match": d.get("in_match", false)})
+			"max": int(d.get("max", 20)), "tag": "ONLINE", "version": str(d.get("version", "")), "in_match": d.get("in_match", false), "mode": str(d.get("mode", "conquest"))})
 	if entries.is_empty():
 		var empty := UI.label("Scanning for battles…\nHost one, or ask a friend for their address." if Firebase.is_signed_in() or true else "", 19, App.TEXT_DIM)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -118,7 +118,7 @@ func _refresh() -> void:
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		n.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(n)
-		var info := UI.label(("IN BATTLE · " if e.in_match else "") + "%d / %d" % [e.players, e.max] + ("" if compatible else "  ·  v" + e.version), 18, App.TEXT_DIM, "display_semi")
+		var info := UI.label(("SIEGE · " if e.mode == "siege" else "CONQUEST · ") + ("IN BATTLE · " if e.in_match else "") + "%d / %d" % [e.players, e.max] + ("" if compatible else "  ·  v" + e.version), 18, App.TEXT_DIM, "display_semi")
 		info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(info)

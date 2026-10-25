@@ -57,6 +57,19 @@ static func glow(color: Color, energy := 3.0, softness := 2.2) -> ShaderMaterial
 		return _shader(SH_GLOW, {"color": color, "energy": energy, "softness": softness}))
 
 
+## Solid glowing surface (reactor cores, generator orbs, energy rings).
+static func glow_solid(color: Color, energy := 4.0) -> StandardMaterial3D:
+	return _cached("glow_solid_%s_%.2f" % [color.to_html(), energy], func():
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color.BLACK
+		m.emission_enabled = true
+		m.emission = color
+		m.emission_energy_multiplier = energy
+		m.roughness = 1.0
+		m.metallic_specular = 0.0
+		return m)
+
+
 static func trail(color: Color, energy := 1.6) -> ShaderMaterial:
 	return _cached("trail_%s_%.2f" % [color.to_html(), energy], func():
 		return _shader(SH_TRAIL, {"color": color, "energy": energy}))

@@ -1,0 +1,142 @@
+{
+  "id": "iron_vanguard",
+  "source": "assets_src/ships/iron_vanguard/iron_vanguard_raw.glb",
+  "source_forward": "-x",
+  "length_m": 1500.0,
+  "section_cuts": [
+    -0.28,
+    -0.04,
+    0.2,
+    0.37
+  ],
+  "paint_fraction": 0.22,
+  "hardpoints": [
+    {
+      "kind": "core",
+      "face": "bottom",
+      "u": 0.135,
+      "v": 0.0
+    },
+    {
+      "kind": "generator",
+      "face": "top",
+      "u": -0.27,
+      "v": 0.0
+    },
+    {
+      "kind": "generator",
+      "face": "top",
+      "u": 0.36,
+      "v": 0.0
+    },
+    {
+      "kind": "generator",
+      "face": "bottom",
+      "u": -0.27,
+      "v": 0.0
+    },
+    {
+      "kind": "generator",
+      "face": "bottom",
+      "u": 0.32,
+      "v": 0.0
+    },
+    {
+      "kind": "flak",
+      "face": "top",
+      "u": -0.4,
+      "v": -0.18
+    },
+    {
+      "kind": "flak",
+      "face": "top",
+      "u": -0.13,
+      "v": -0.25
+    },
+    {
+      "kind": "heavy",
+      "face": "top",
+      "u": 0.0,
+      "v": -0.27
+    },
+    {
+      "kind": "heavy",
+      "face": "top",
+      "u": 0.3,
+      "v": -0.36
+    },
+    {
+      "kind": "flak",
+      "face": "bottom",
+      "u": -0.4,
+      "v": -0.18
+    },
+    {
+      "kind": "flak",
+      "face": "bottom",
+      "u": -0.1,
+      "v": -0.25
+    },
+    {
+      "kind": "heavy",
+      "face": "bottom",
+      "u": 0.3,
+      "v": -0.36
+    },
+    {
+      "kind": "flak",
+      "face": "left",
+      "u": 0.18,
+      "v": 0.0
+    },
+    {
+      "kind": "flak",
+      "face": "top",
+      "u": -0.4,
+      "v": 0.18
+    },
+    {
+      "kind": "flak",
+      "face": "top",
+      "u": -0.13,
+      "v": 0.25
+    },
+    {
+      "kind": "heavy",
+      "face": "top",
+      "u": 0.0,
+      "v": 0.27
+    },
+    {
+      "kind": "heavy",
+      "face": "top",
+      "u": 0.3,
+      "v": 0.36
+    },
+    {
+      "kind": "flak",
+      "face": "bottom",
+      "u": -0.4,
+      "v": 0.18
+    },
+    {
+      "kind": "flak",
+      "face": "bottom",
+      "u": -0.1,
+      "v": 0.25
+    },
+    {
+      "kind": "heavy",
+      "face": "bottom",
+      "u": 0.3,
+      "v": 0.36
+    },
+    {
+      "kind": "flak",
+      "face": "right",
+      "u": 0.18,
+      "v": 0.0
+    }
+  ],
+  "surface_points": 90
+}

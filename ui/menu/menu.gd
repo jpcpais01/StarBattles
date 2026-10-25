@@ -2,11 +2,13 @@ extends Node3D
 ## Home screen. A live 3D hangar shot (your ship idling in front of Saturn)
 ## sits behind a console-style UI: top bar with pilot and network status,
 ## a focused-tile headline, and a row of animated tiles that open pages.
+## The siege briefing swaps the fighter for the full-size IRON VANGUARD.
 
 signal scene_ready
 
 const Tile := preload("res://ui/menu/tile.gd")
 const PAGES := {
+	"siege": preload("res://ui/menu/siege_page.gd"),
 	"multiplayer": preload("res://ui/menu/multiplayer_page.gd"),
 	"lobby": preload("res://ui/menu/lobby_page.gd"),
 	"hangar": preload("res://ui/menu/hangar_page.gd"),
@@ -18,6 +20,8 @@ const PAGES := {
 const TILES := [
 	{"id": "quick", "label": "QUICK BATTLE", "icon": "battle", "tint": Color(0.42, 0.82, 1.0),
 		"title": "QUICK BATTLE", "desc": "Drop straight into a 10 v 10 Conquest battle against AI squadrons. Hold the three relay stations or out-gun the enemy fleet to win."},
+	{"id": "siege", "label": "SIEGE", "icon": "siege", "tint": Color(1.0, 0.45, 0.3),
+		"title": "MOTHERSHIP SIEGE", "desc": "A 1.5 km carrier, sixteen turrets and a shield bubble. Tear it down with the attack wing, or fly escort and keep it alive."},
 	{"id": "multiplayer", "label": "MULTIPLAYER", "icon": "multi", "tint": Color(0.45, 1.0, 0.75),
 		"title": "MULTIPLAYER", "desc": "Host or join battles with friends over Wi-Fi or the internet. Up to 20 pilots, with AI wingmen filling every empty seat."},
 	{"id": "hangar", "label": "HANGAR", "icon": "hangar", "tint": Color(1.0, 0.62, 0.3),
@@ -36,6 +40,8 @@ var camera: Camera3D
 var showcase: Node3D
 var ship: Ship
 var _ship_id := ""
+var capital: Mothership
+var _capital_fill: OmniLight3D
 var _rocks: Array[Node3D] = []
 var _t := 0.0
 
@@ -136,7 +142,9 @@ func _show_ship(id: String) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if ship and is_instance_valid(ship):
+	if capital:
+		_frame_capital(delta)
+	elif ship and is_instance_valid(ship):
 		var r := ship.radius
 		var dist := r * 3.15
 		# Framed toward Saturn so the planet hangs behind the ship.
@@ -341,6 +349,8 @@ func _on_tile_focus(i: int) -> void:
 	_head_title.text = d.title
 	_head_desc.text = d.desc
 	_head_hint.text = UI.spaced("Tap to open" if App.is_mobile else "Press enter to open")
+	if d.id == "siege":
+		_head_hint.text = UI.spaced("Tap to choose a side" if App.is_mobile else "Press enter to choose a side")
 	if d.id == "quick":
 		_head_hint.text = UI.spaced("Tap to launch" if App.is_mobile else "Press enter to launch")
 	if d.id == "hangar":
@@ -361,7 +371,56 @@ func _quick_battle() -> void:
 	if App.transitioning:
 		return
 	Net.leave()
+	if App.autotest_seconds > 0.0 and App.cli_mode == "siege":
+		Net.start_match({"mode": "siege", "team": App.cli_team if App.cli_team >= 0 else SiegeRules.ATTACKERS})
+		return
 	Net.start_match({"mode": "quick"})
+
+
+# --- Siege showcase ---------------------------------------------------------------
+
+func _show_capital(on: bool) -> void:
+	if on == (capital != null):
+		return
+	if ship:
+		ship.visible = not on
+	for rock in _rocks:
+		rock.visible = not on
+	if not on:
+		capital.queue_free()
+		capital = null
+		_capital_fill.queue_free()
+		camera.h_offset = 0.0
+		camera.v_offset = 0.0
+		return
+	# Broadside-on at true scale, bow angled slightly toward the camera.
+	var side := env.saturn_direction.cross(Vector3.UP).normalized()
+	var z := -side.rotated(Vector3.UP, deg_to_rad(-20.0))
+	var b := Basis(Vector3.UP.cross(z).normalized(), Vector3.UP, z)
+	capital = Mothership.new()
+	add_child(capital)
+	capital.setup(null, SiegeRules.DEFENDERS, Transform3D(b, Vector3.ZERO))
+	# Saturn sits behind it, so the near side would be in shadow: a soft fill.
+	_capital_fill = OmniLight3D.new()
+	_capital_fill.light_color = Color(0.7, 0.8, 1.0)
+	_capital_fill.omni_range = 4200.0
+	_capital_fill.omni_attenuation = 0.6
+	_capital_fill.light_energy = 1.6
+	_capital_fill.position = -env.saturn_direction * 1500.0 + Vector3(0, 900.0, 0)
+	add_child(_capital_fill)
+
+
+func _frame_capital(delta: float) -> void:
+	var look := env.saturn_direction.rotated(Vector3.UP, deg_to_rad(-10.0 + sin(_t * 0.04) * 6.0))
+	look = look.rotated(look.cross(Vector3.UP).normalized(), deg_to_rad(-9.0 + sin(_t * 0.03) * 2.0))
+	camera.global_position = -look * 2300.0 + Vector3(0, 320.0, 0)
+	camera.look_at(camera.global_position + look, Vector3.UP)
+	camera.h_offset = -620.0
+	camera.v_offset = 60.0
+	capital.position = Vector3(0, sin(_t * 0.25) * 6.0, 0)
+	for p in capital.parts:
+		if p.is_turret():
+			p.track(capital.to_global(p.position + p.up_local * 600.0 + Vector3(sin(_t * 0.2 + p.index) * 900.0, 0, cos(_t * 0.17 + p.index) * 900.0)), delta)
 
 
 func open_page(id: String) -> void:
@@ -375,9 +434,12 @@ func open_page(id: String) -> void:
 		p.open_lobby.connect(func(): open_page.call_deferred("lobby"))
 	if p.has_signal("ship_focused"):
 		p.ship_focused.connect(_show_ship)
+	if p.has_signal("capital_focused"):
+		p.capital_focused.connect(_show_capital)
 	p.closed.connect(func():
 		if _page == p:
 			_page = null
+			_show_capital(false)
 			_show_ship(str(Profile.data.ship))
 			_set_home_visible(true)
 			_tiles[_focus_index].grab_focus())

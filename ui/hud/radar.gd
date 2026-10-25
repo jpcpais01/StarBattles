@@ -42,6 +42,8 @@ func _draw() -> void:
 		draw_arc(c + v, 8.0, 0, TAU, 20, col, 1.5, true)
 		var fs := 11
 		draw_string(_font, c + v + Vector2(-3.5, 4), p.letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+	if arena.siege and not arena.siege.mothership.destroyed:
+		_draw_mothership(me, inv, c, r)
 	for s in arena.ships:
 		if s == me or not s.alive:
 			continue
@@ -59,3 +61,45 @@ func _draw() -> void:
 			draw_circle(p - Vector2(0, h), 2.5, col)
 	# Own ship glyph.
 	draw_colored_polygon(PackedVector2Array([c + Vector2(0, -7), c + Vector2(5, 5), c + Vector2(0, 2), c + Vector2(-5, 5)]), Color.WHITE)
+
+
+## Siege: the carrier's footprint and its objectives, clipped to the scope.
+func _draw_mothership(me: Ship, inv: Basis, c: Vector2, r: float) -> void:
+	var m := arena.siege.mothership
+	var e := m.half_extents
+	var col := App.team_color(SiegeRules.DEFENDERS)
+	var pts := PackedVector2Array()
+	for corner in [Vector3(-e.x, 0, -e.z * 0.85), Vector3(0, 0, -e.z), Vector3(e.x, 0, -e.z * 0.85), Vector3(e.x, 0, e.z), Vector3(-e.x, 0, e.z)]:
+		var l: Vector3 = inv * (m.global_transform * (corner as Vector3) - me.global_position)
+		pts.append(c + Vector2(l.x, l.z) / RANGE * r)
+	# Clip to the scope; seen edge-on (or from far off) nothing may be left.
+	var scope := PackedVector2Array()
+	for i in 32:
+		scope.append(c + Vector2.from_angle(i * TAU / 32.0) * (r - 2.0))
+	if absf(_area(pts)) < 1.0:
+		pts = PackedVector2Array()
+	for poly in (Geometry2D.intersect_polygons(pts, scope) if not pts.is_empty() else []):
+		if absf(_area(poly)) < 1.0:
+			continue
+		draw_colored_polygon(poly, Color(col, 0.18))
+		var outline: PackedVector2Array = poly.duplicate()
+		outline.append(poly[0])
+		draw_polyline(outline, Color(col, 0.6), 1.5, true)
+	for p in arena.siege.parts():
+		if not p.alive or not (p.kind == "generator" or (p.kind == "core" and p.exposed)):
+			continue
+		var l := inv * (p.aim_center() - me.global_position)
+		var v := Vector2(l.x, l.z) / RANGE * r
+		if v.length() > r - 6.0:
+			v = v.normalized() * (r - 6.0)
+		var q := c + v
+		var k := 4.5 if p.kind == "generator" else 6.0
+		var pc := col.lightened(0.4) if p.kind == "generator" else Color(1.0, 0.55, 0.25)
+		draw_colored_polygon(PackedVector2Array([q + Vector2(0, -k), q + Vector2(k, 0), q + Vector2(0, k), q + Vector2(-k, 0)]), pc)
+
+
+static func _area(poly: PackedVector2Array) -> float:
+	var a := 0.0
+	for i in poly.size():
+		a += poly[i].cross(poly[(i + 1) % poly.size()])
+	return a * 0.5

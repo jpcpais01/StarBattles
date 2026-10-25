@@ -46,9 +46,10 @@ var score := 0
 var streak := 0
 var best_streak := 0
 
-# Targeting / missiles.
-var target: Ship = null
-var lock_target: Ship = null
+# Targeting / missiles. A Ship, or a MothershipPart in Siege (duck-typed:
+# alive, team, velocity, global_position).
+var target = null
+var lock_target = null
 var lock_progress := 0.0
 var incoming_missiles := 0
 
@@ -341,6 +342,19 @@ func _collide(delta: float, arena: Arena) -> void:
 				if is_local_player():
 					arena.camera_shake(clampf(impact / 60.0, 0.2, 1.0))
 					Settings.vibrate(80)
+	if arena.siege:
+		var mh := arena.siege.mothership.collide_sphere(global_position, radius * 0.75)
+		if not mh.is_empty():
+			var mn: Vector3 = mh.normal
+			global_position += mn * float(mh.depth)
+			var mvn := velocity.dot(mn)
+			if mvn < 0.0:
+				velocity -= mn * mvn * 1.6
+				if -mvn > 18.0:
+					arena.ctl.request_collision_damage(self, -mvn * 3.5, -1)
+					if is_local_player():
+						arena.camera_shake(clampf(-mvn / 60.0, 0.2, 1.0))
+						Settings.vibrate(80)
 	# Soft arena boundary pushes ships back toward the fight.
 	var d := global_position.length()
 	if d > Arena.BOUNDARY:
@@ -399,7 +413,7 @@ func _update_weapons(delta: float, arena: Arena, input: Dictionary) -> void:
 	var pressed := firing_secondary and not _fire2_was
 	_fire2_was = firing_secondary
 	if pressed:
-		var tid := lock_target.ship_id if lock_target and lock_progress >= 1.0 else -1
+		var tid := arena.target_id_of(lock_target) if lock_target and lock_progress >= 1.0 else -1
 		for i in mounts.size():
 			var m := mounts[i]
 			if m.wdef.type == "missile" and m.cooldown <= 0.0:
@@ -461,17 +475,15 @@ func _update_lock(delta: float, arena: Arena) -> void:
 	var wdef := ShipLibrary.weapon("missile_pod")
 	var cone := cos(deg_to_rad(wdef.lock_cone))
 	var fwd := -global_basis.z
-	var candidate: Ship = null
-	if target and target.alive and target.team != team:
-		var to := target.global_position - global_position
+	var candidate: Node3D = null
+	if target and is_instance_valid(target) and target.alive and target.team != team:
+		var to: Vector3 = target.global_position - global_position
 		if to.length() < wdef.lock_range and fwd.dot(to.normalized()) > cone:
 			candidate = target
 	if candidate == null:
 		var best := -1.0
-		for s in arena.ships:
-			if s.team == team or not s.alive:
-				continue
-			var to := s.global_position - global_position
+		for s in arena.lock_candidates(team):
+			var to: Vector3 = s.global_position - global_position
 			var dist := to.length()
 			if dist > wdef.lock_range:
 				continue
@@ -516,6 +528,8 @@ func _update_beams(delta: float, arena: Arena) -> void:
 			to = hit.position
 			if randf() < delta * 20.0:
 				FX.sparks(arena, to, hit.normal, m.wdef.color, 6)
+				if arena.siege and arena.siege.owns(hit.collider) and randf() < 0.3:
+					arena.siege.hit_fx(hit.collider, to, hit.normal, m.wdef.color, team)
 			if multiplayer.is_server():
 				var dmg: float = m.wdef.dps * delta
 				var col: Object = hit.collider
@@ -523,6 +537,8 @@ func _update_beams(delta: float, arena: Arena) -> void:
 					var s: Ship = col.get_meta("ship")
 					if s.team != team:
 						arena.ctl.server_damage(s, dmg, m.wdef, ship_id, to, true)
+				elif arena.siege and arena.siege.owns(col):
+					arena.siege.damage_collider(col, dmg, m.wdef, ship_id, team)
 				elif col.has_meta("asteroid"):
 					arena.field.damage(int(col.get_meta("asteroid")), dmg, to, dir)
 		m.set_beam(true, from, to)

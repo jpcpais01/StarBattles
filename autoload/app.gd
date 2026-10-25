@@ -30,6 +30,10 @@ var is_dedicated := false
 var autotest_seconds := 0.0
 ## Autotest only: join this host instead of starting a local battle.
 var autotest_join := ""
+## Command line only: game mode for autotest / dedicated hosts ("" = default).
+var cli_mode := ""
+## Command line only: team for the local pilot in an autotest (-1 = default).
+var cli_team := -1
 ## Config for the next match, read by the arena when it loads.
 var match_config: Dictionary = {}
 var current_scene_path := ""
@@ -55,6 +59,10 @@ func _ready() -> void:
 				autotest_seconds = float(parts[1])
 		elif a.begins_with("--join="):
 			autotest_join = a.get_slice("=", 1)
+		elif a.begins_with("--mode="):
+			cli_mode = a.get_slice("=", 1)
+		elif a.begins_with("--team="):
+			cli_team = int(a.get_slice("=", 1))
 	_build_fade_layer()
 	get_tree().auto_accept_quit = true
 	get_tree().quit_on_go_back = false

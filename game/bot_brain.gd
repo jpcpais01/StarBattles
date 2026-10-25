@@ -3,8 +3,10 @@ extends RefCounted
 ## AI pilot. Picks between capturing objectives and dogfighting, flies with
 ## bank-to-turn steering and asteroid avoidance, leads its shots with skill-
 ## dependent error, jinks when under fire and fires missiles on lock.
+## In Siege, attackers fly strafing runs on the mothership's systems and
+## defenders guard the carrier, hunting whoever gets close to it.
 
-enum Mode { CAPTURE, ATTACK, EVADE }
+enum Mode { CAPTURE, ATTACK, EVADE, STRIKE, GUARD }
 
 var arena: Arena
 var skill := 0.5
@@ -19,6 +21,11 @@ var _last_hull := 0.0
 var _orbit_sign := 1.0
 var _aim_err := Vector3.ZERO
 var _personality := randf()
+# Siege strike runs: what we are shooting, and the pull-out after a pass.
+var strike: Dictionary = {}
+var _strike_age := 0.0
+var _break_t := 0.0
+var _break_dest := Vector3.ZERO
 
 
 func _init(a: Arena, s: float) -> void:
@@ -38,7 +45,16 @@ func get_input(ship: Ship, delta: float) -> Dictionary:
 	var inp := {"throttle": 0.8, "boost": false, "fire1": false, "fire2": false, "roll": 0.0, "strafe": 0.0}
 	var dest := ship.global_position - ship.global_basis.z * 200.0
 	var aim := ship.global_position - ship.global_basis.z * 700.0
+	_strike_age += delta
 	match mode:
+		Mode.STRIKE:
+			var r := _strike_run(ship, delta, inp)
+			dest = r[0]
+			aim = r[1]
+		Mode.GUARD:
+			dest = _guard_point(ship)
+			inp.throttle = 0.7
+			inp.boost = ship.global_position.distance_to(dest) > 1400.0 and ship.boost_energy > 50.0
 		Mode.CAPTURE:
 			if objective:
 				var c := objective.global_position
@@ -98,6 +114,9 @@ func get_input(ship: Ship, delta: float) -> Dictionary:
 
 
 func _decide(ship: Ship) -> void:
+	if arena.siege:
+		_decide_siege(ship)
+		return
 	# Closest threatening enemy.
 	enemy = null
 	var best := INF
@@ -130,10 +149,114 @@ func _decide(ship: Ship) -> void:
 		mode = Mode.CAPTURE
 
 
+# --- Siege ---------------------------------------------------------------------------
+
+func _decide_siege(ship: Ship) -> void:
+	var sg := arena.siege
+	var m := sg.mothership
+	var attacking := ship.team == SiegeRules.ATTACKERS
+	enemy = null
+	var best := INF
+	for s in arena.ships:
+		if s.team == ship.team or not s.alive:
+			continue
+		var d := s.global_position.distance_to(ship.global_position)
+		var facing := (-ship.global_basis.z).dot((s.global_position - ship.global_position).normalized())
+		var score := d - facing * 250.0
+		if not attacking:
+			# Defenders care most about whoever is closest to the carrier.
+			score += s.global_position.distance_to(m.global_position) * 0.6
+		if score < best:
+			best = score
+			enemy = s
+	var enemy_dist := ship.global_position.distance_to(enemy.global_position) if enemy else INF
+	if attacking:
+		# Escorts (low personality) dogfight; strikers stay on the objective
+		# unless someone is right on top of them.
+		var escort := _personality < 0.3
+		var threat := 450.0 + skill * 250.0 if not escort else 1100.0
+		if enemy and enemy_dist < threat:
+			mode = Mode.ATTACK
+			return
+		var part: MothershipPart = strike.get("part")
+		var stale := strike.is_empty() or _strike_age > 22.0 or (part != null and not part.alive) \
+			or (part == null and sg.stage != SiegeRules.Stage.ARMOR)
+		if stale:
+			strike = sg.pick_strike(ship, _personality)
+			_strike_age = 0.0
+		mode = Mode.STRIKE if not strike.is_empty() else (Mode.ATTACK if enemy else Mode.GUARD)
+	else:
+		var near_ship := enemy != null and enemy.global_position.distance_to(m.global_position) < m.half_extents.z + 1500.0
+		var aggression := 650.0 + _personality * 500.0 + skill * 200.0
+		mode = Mode.ATTACK if enemy and (near_ship or enemy_dist < aggression) else Mode.GUARD
+
+
+## A strafing pass: stage off the surface, dive in shooting, pull out
+## along the surface normal, swing round and go again.
+func _strike_run(ship: Ship, delta: float, inp: Dictionary) -> Array:
+	var part: MothershipPart = strike.get("part")
+	var tp: Vector3 = part.aim_center() if part else strike.point
+	var n: Vector3 = (part.global_basis.y if part else strike.normal)
+	var pos := ship.global_position
+	var to := tp - pos
+	var dist := to.length()
+	inp.target = part
+	if _break_t > 0.0:
+		_break_t -= delta
+		inp.throttle = 1.0
+		inp.boost = ship.boost_energy > 45.0 and _break_t > 1.2
+		return [_break_dest, _break_dest]
+	var max_range := 1150.0
+	for mt in ship.mounts:
+		if mt.group == 0:
+			max_range = minf(max_range, float(mt.wdef.range))
+	var outside := (pos - tp).normalized().dot(n)
+	if dist > 1500.0 or (outside < 0.15 and dist > 500.0):
+		# Approach to a staging point off the surface, not straight through the hull.
+		inp.boost = dist > 1700.0 and ship.boost_energy > 40.0
+		inp.throttle = 1.0
+		var stage_pt := tp + n * minf(900.0, dist * 0.6)
+		return [stage_pt, stage_pt]
+	_aim_err = _aim_err.lerp(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * (1.0 - skill) * 14.0, delta * 2.0)
+	var aim := tp + _aim_err
+	inp.throttle = clampf(0.55 + dist / 2000.0, 0.55, 0.95)
+	var dot := (-ship.global_basis.z).dot((aim - pos).normalized())
+	inp.fire1 = dot > 0.985 - (1.0 - skill) * 0.01 and dist < max_range and not ship.primary_overheated()
+	inp.fire2 = ship.lock_progress >= 1.0 and ship.missile_ready() and randf() < delta * 2.5
+	var pull := 260.0 + ship.radius * 4.0 + (part.radius if part else 0.0)
+	if dist < pull:
+		_break_t = randf_range(2.6, 3.6)
+		var side := n.cross(Vector3.UP)
+		if side.length() < 0.1:
+			side = Vector3.RIGHT
+		_break_dest = tp + n * 1000.0 + side.normalized() * 600.0 * _orbit_sign
+		_orbit_sign = -_orbit_sign
+		if randf() < 0.35:
+			strike = arena.siege.pick_strike(ship, _personality)
+			_strike_age = 0.0
+	return [tp, aim]
+
+
+## Defenders patrol a slow orbit around the carrier.
+func _guard_point(ship: Ship) -> Vector3:
+	var m := arena.siege.mothership
+	var e := m.half_extents
+	var a := Time.get_ticks_msec() * 0.00004 * (1.0 + _personality) + _personality * TAU
+	var local := Vector3(cos(a) * (e.x + 450.0 + _personality * 300.0), sin(a * 1.7) * e.y * 0.9, sin(a) * (e.z + 300.0))
+	return m.global_transform * local
+
+
 ## Deflects the destination around asteroids on the flight path.
 func _avoid(ship: Ship, dest: Vector3) -> Vector3:
 	var fwd := ship.velocity.normalized() if ship.velocity.length() > 5.0 else -ship.global_basis.z
 	var look := clampf(ship.velocity.length() * 2.2, 120.0, 500.0)
+	if arena.siege:
+		var mh := arena.siege.mothership.probe(ship.global_position, fwd, look + 80.0)
+		if not mh.is_empty():
+			var mn: Vector3 = mh.normal
+			# Skim off the plating: steer along the surface and away from it.
+			var along := (fwd - mn * fwd.dot(mn)).normalized()
+			return Vector3(mh.point) + mn * (220.0 + ship.radius * 6.0) + along * 300.0
 	var hit := arena.field.probe(ship.global_position, fwd, look, ship.radius + 12.0)
 	if hit.is_empty():
 		var d := ship.global_position.length()

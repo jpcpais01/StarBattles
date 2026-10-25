@@ -4,6 +4,8 @@ extends CanvasLayer
 
 const Overlay := preload("res://ui/hud/hud_overlay.gd")
 const ScoreBar := preload("res://ui/hud/score_bar.gd")
+const SiegeBar := preload("res://ui/hud/siege_bar.gd")
+const SiegeOverlay := preload("res://ui/hud/siege_overlay.gd")
 const Radar := preload("res://ui/hud/radar.gd")
 const Touch := preload("res://ui/hud/touch_controls.gd")
 const SettingsPanel := preload("res://ui/menu/settings_panel.gd")
@@ -45,8 +47,16 @@ func _ready() -> void:
 	overlay.arena = arena
 	overlay.hud = self
 	root.add_child(overlay)
+	if arena.siege:
+		var so := SiegeOverlay.new()
+		so.arena = arena
+		root.add_child(so)
+		root.move_child(so, overlay.get_index())
 
-	score_bar = ScoreBar.new()
+	if arena.siege:
+		score_bar = SiegeBar.new()
+	else:
+		score_bar = ScoreBar.new()
 	score_bar.arena = arena
 	score_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	score_bar.size = Vector2(760, 96)
@@ -192,8 +202,11 @@ func _process(_delta: float) -> void:
 			lines.append("SEEKERS   " + ("READY" if me.missile_ready() else "%d%%" % int(me.missile_reload_fraction() * 100.0)))
 		_weapons.text = "\n".join(lines)
 	if _death.visible and me:
+		var queued := arena.ctl._respawn_queue.has(me.ship_id)
 		var left := maxf(0.0, float(arena.ctl._respawn_queue.get(me.ship_id, arena.time)) - arena.time)
 		_death_timer.text = "REDEPLOY IN %d" % int(ceil(left)) if left > 0.0 else "REDEPLOYING"
+		if not queued and arena.siege and not arena.siege.can_respawn(me):
+			_death_timer.text = "NO REINFORCEMENTS LEFT"
 	if not App.is_mobile:
 		var want := Input.is_action_pressed("scoreboard")
 		if want != _scoreboard.visible and not (_results and _results.visible):
@@ -265,18 +278,21 @@ func toast(text: String) -> void:
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.6)
 
 
-func kill_feed(killer: Ship, victim: Ship) -> void:
+func kill_feed(killer: Ship, victim: Ship, killer_name := "") -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var me := arena.local_ship
-	if killer and killer != victim:
+	if killer_name != "":
+		row.add_child(UI.label(killer_name, 19, App.team_color(SiegeRules.DEFENDERS).lightened(0.35), "display_semi"))
+		row.add_child(UI.label("  ✦  ", 16, Color(1, 1, 1, 0.5), "body"))
+	elif killer and killer != victim:
 		var kl := UI.label(killer.pilot_name, 19, App.team_color(killer.team).lightened(0.2), "display_semi")
 		row.add_child(kl)
 		row.add_child(UI.label("  ✦  ", 16, Color(1, 1, 1, 0.5), "body"))
 	var vl := UI.label(victim.pilot_name, 19, App.team_color(victim.team).lightened(0.2), "display_semi")
 	row.add_child(vl)
-	if killer == null or killer == victim:
+	if killer_name == "" and (killer == null or killer == victim):
 		row.add_child(UI.label("  crashed", 16, Color(1, 1, 1, 0.5), "body"))
 	var panel := PanelContainer.new()
 	var sb := UI.pill_box(Color.WHITE, 0.06)
@@ -383,8 +399,10 @@ func _rebuild_ship_cards() -> void:
 		_ship_cards.add_child(b)
 
 
-func on_death(killer: Ship) -> void:
+func on_death(killer: Ship, killer_name := "") -> void:
 	_death_title.text = "DESTROYED BY %s" % killer.pilot_name.to_upper() if killer else "SHIP LOST"
+	if killer_name != "":
+		_death_title.text = "SHOT DOWN BY THE %s" % killer_name
 	_rebuild_ship_cards()
 	_death.visible = true
 	_death.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -532,6 +550,10 @@ func show_results(winner: int, xp: Dictionary) -> void:
 	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tl)
 	var sc := UI.label("%s  %d   —   %d  %s" % [App.TEAM_NAMES[0], int(arena.ctl.scores[0]), int(arena.ctl.scores[1]), App.TEAM_NAMES[1]], 28, Color.WHITE, "display_semi")
+	if arena.siege:
+		var held := winner == SiegeRules.DEFENDERS
+		sc.text = "%s %s   ·   %s" % [Mothership.DISPLAY_NAME, "HELD THE LINE" if held else "DESTROYED",
+			("%d reinforcements left" % arena.siege.tickets) if held else "in %s" % App.format_time(arena.siege.time_limit() - arena.ctl.time_left)]
 	sc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sc)
 	if me:
@@ -539,7 +561,7 @@ func show_results(winner: int, xp: Dictionary) -> void:
 		var stats := HBoxContainer.new()
 		stats.alignment = BoxContainer.ALIGNMENT_CENTER
 		stats.add_theme_constant_override("separation", 50)
-		for pair in [["KILLS", me.kills], ["DEATHS", me.deaths], ["ASSISTS", me.assists], ["CAPTURES", me.captures], ["SCORE", me.score]]:
+		for pair in [["KILLS", me.kills], ["DEATHS", me.deaths], ["ASSISTS", me.assists], ["SYSTEMS" if arena.siege else "CAPTURES", me.captures], ["SCORE", me.score]]:
 			var v := VBoxContainer.new()
 			var n := UI.label(str(pair[1]), 54, Color.WHITE, "display")
 			n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

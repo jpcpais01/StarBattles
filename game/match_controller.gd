@@ -1,8 +1,10 @@
 class_name MatchController
 extends Node
-## Rules and netcode for a 10v10 Conquest match. The server owns scoring,
-## damage, deaths, respawns, bots and asteroid fractures; owners stream their
-## own ship state; everyone simulates projectiles locally for visuals.
+## Rules and netcode for a 10v10 match. Conquest scoring lives here; in
+## Mothership Siege the objective rules live in SiegeRules (arena.siege) and
+## this keeps doing pilots, damage, respawns and streaming. The server owns
+## scoring, damage, deaths, respawns, bots and asteroid fractures; owners
+## stream their own ship state; everyone simulates projectiles for visuals.
 
 enum Phase { WARMUP, LIVE, ENDED }
 
@@ -55,7 +57,8 @@ func server_start() -> void:
 		for pid in Net.players.keys():
 			humans.append({"peer": pid, "name": Net.players[pid].name, "team": int(Net.players[pid].team), "ship": str(Net.players[pid].ship)})
 	elif not App.is_dedicated:
-		humans.append({"peer": 1, "name": Profile.callsign(), "team": 0, "ship": str(Profile.data.ship)})
+		var my_team := clampi(int(App.match_config.get("team", 0)), 0, 1)
+		humans.append({"peer": 1, "name": Profile.callsign(), "team": my_team, "ship": str(Profile.data.ship)})
 	var records := []
 	var per_team := [0, 0]
 	for h in humans:
@@ -107,6 +110,13 @@ func _ship_record(s: Ship) -> Dictionary:
 
 
 func spawn_transform(team: int, slot: int) -> Transform3D:
+	if arena.siege:
+		return arena.siege.spawn_transform(team, slot)
+	return default_spawn(team, slot)
+
+
+## Conquest spawn lanes at each end of the arena, facing the middle.
+func default_spawn(team: int, slot: int) -> Transform3D:
 	var side := -1.0 if team == 0 else 1.0
 	var row := slot % 5
 	var col := slot / 5
@@ -190,8 +200,13 @@ func _net_client_ready() -> void:
 	for p in arena.points:
 		pts.append([p.progress, p.owner_team, p.contested])
 	_net_full_state.rpc_id(peer, {"ships": ships, "asteroids": arena.field.get_state(), "points": pts,
-		"scores": scores, "time_left": time_left, "phase": phase, "phase_time": phase_time, "time": arena.time})
+		"scores": scores, "time_left": time_left, "phase": phase, "phase_time": phase_time, "time": arena.time,
+		"siege": arena.siege.get_state() if arena.siege else {}})
 	_ready_peers[peer] = true
+
+
+func ready_peers() -> Array:
+	return _ready_peers.keys()
 
 
 ## Server: sends an RPC to every client whose arena has finished loading
@@ -211,9 +226,11 @@ func _net_full_state(state: Dictionary) -> void:
 	phase = int(state.phase) as Phase
 	phase_time = float(state.phase_time)
 	arena.field.apply_state(state.asteroids)
-	for i in state.points.size():
+	for i in mini(state.points.size(), arena.points.size()):
 		var p: Array = state.points[i]
 		arena.points[i].set_state(p[0], p[1], p[2])
+	if arena.siege and not (state.get("siege", {}) as Dictionary).is_empty():
+		arena.siege.apply_state(state.siege)
 	for r in state.ships:
 		var s := _create_ship(r)
 		s.kills = r.stats[0]
@@ -287,9 +304,13 @@ func _server_tick(delta: float) -> void:
 			if c != _countdown_last and c <= 3 and c > 0:
 				_countdown_last = c
 			if phase_time <= 0.0:
-				_set_phase(Phase.LIVE, TIME_LIMIT)
+				_set_phase(Phase.LIVE, arena.siege.time_limit() if arena.siege else TIME_LIMIT)
 		Phase.LIVE:
 			time_left -= delta
+			if arena.siege:
+				arena.siege.server_tick(delta)
+				_tick_respawns()
+				return
 			for p in arena.points:
 				var cap := p.simulate(delta, arena.ships)
 				if cap >= 0:
@@ -316,6 +337,10 @@ func _server_tick(delta: float) -> void:
 			if phase_time <= 0.0 and not _ended_handled:
 				_ended_handled = true
 				arena.leave_match_to_menu()
+	_tick_respawns()
+
+
+func _tick_respawns() -> void:
 	for id in _respawn_queue.keys():
 		if arena.time >= float(_respawn_queue[id]):
 			_respawn_queue.erase(id)
@@ -335,10 +360,20 @@ func _net_phase(p: int, t: float) -> void:
 	phase = p as Phase
 	if phase == Phase.LIVE:
 		time_left = t
-		arena.hud.banner("ENGAGE", "Capture and hold the objectives", App.ACCENT)
+		if arena.siege:
+			var my_team := arena.local_ship.team if arena.local_ship else SiegeRules.ATTACKERS
+			arena.hud.banner("ATTACK" if my_team == SiegeRules.ATTACKERS else "DEFEND", arena.siege.objective_text(my_team), App.team_color(my_team))
+		else:
+			arena.hud.banner("ENGAGE", "Capture and hold the objectives", App.ACCENT)
 		Sfx.play("capture", -2.0, 0.8)
 	else:
 		phase_time = t
+
+
+## Server: finish the match with winner `w` (-1 for a draw).
+func end_match(w: int) -> void:
+	if phase != Phase.ENDED:
+		_end(w)
 
 
 func _end(w: int) -> void:
@@ -425,11 +460,15 @@ func _spawn_shot(ship: Ship, mount_idx: int, origin: Vector3, dir: Vector3, targ
 						var t: Ship = col.get_meta("ship")
 						if t.team != ship.team:
 							server_damage(t, float(w.damage), w, ship.ship_id, to, false)
+					elif arena.siege and arena.siege.owns(col):
+						arena.siege.damage_collider(col, float(w.damage), w, ship.ship_id, ship.team)
 					elif col.has_meta("asteroid"):
 						arena.field.damage(int(col.get_meta("asteroid")), float(w.damage) * 2.0, to, dir)
 				if hit.collider.has_meta("ship"):
 					var t2: Ship = hit.collider.get_meta("ship")
 					t2.show_hit(to, t2.shield > 0.0)
+				elif arena.siege and arena.siege.owns(hit.collider):
+					arena.siege.hit_fx(hit.collider, to, hit.normal, w.color, ship.team)
 			FX.rail_tracer(arena, origin, to, w.color)
 			Sfx.play_at("rail", origin, 0.0 if ship.is_local_player() else -4.0, 1.0, 2400.0)
 			if ship.is_local_player():
@@ -437,7 +476,7 @@ func _spawn_shot(ship: Ship, mount_idx: int, origin: Vector3, dir: Vector3, targ
 		"missile":
 			var m2 := Missile.new()
 			arena.fx_root.add_child(m2)
-			m2.setup(arena, ship.ship_id, ship.team, origin, dir, arena.ship_by_id(target_id), ship.velocity.length())
+			m2.setup(arena, ship.ship_id, ship.team, origin, dir, arena.target_by_id(target_id), ship.velocity.length())
 			arena.missiles.append(m2)
 			Sfx.play_at("missile", origin, -2.0, randf_range(0.9, 1.1), 1400.0)
 
@@ -479,7 +518,7 @@ func _net_hit(attacker_id: int, target_id: int, amount: float, shielded: bool, d
 	arena.on_hit_event(attacker_id, target_id, amount, shielded, dead)
 
 
-func server_splash(pos: Vector3, radius: float, damage: float, wdef: Dictionary, attacker_id: int, team: int, direct: Ship) -> void:
+func server_splash(pos: Vector3, radius: float, damage: float, wdef: Dictionary, attacker_id: int, team: int, direct: Node3D) -> void:
 	for s in arena.ships:
 		if not s.alive or s.team == team:
 			continue
@@ -516,7 +555,7 @@ func _kill(victim: Ship, killer_id: int, pos: Vector3) -> void:
 	for a in victim.damagers.keys():
 		if a != killer_id and arena.time - float(victim.damagers[a]) < 12.0:
 			assists.append(a)
-	if killer_id < 0 and not victim.damagers.is_empty():
+	if killer_id < 0 and killer_id != SiegeRules.MOTHERSHIP_ID and not victim.damagers.is_empty():
 		# Credit the last attacker for collisions/boundary deaths.
 		var last := -1.0
 		for a in victim.damagers.keys():
@@ -524,7 +563,10 @@ func _kill(victim: Ship, killer_id: int, pos: Vector3) -> void:
 				last = victim.damagers[a]
 				killer_id = a
 		assists.erase(killer_id)
-	_respawn_queue[victim.ship_id] = arena.time + RESPAWN_TIME
+	if arena.siege:
+		arena.siege.on_death(victim)
+	if arena.siege == null or arena.siege.can_respawn(victim):
+		_respawn_queue[victim.ship_id] = arena.time + RESPAWN_TIME
 	var killer := arena.ship_by_id(killer_id)
 	if killer and killer.team != victim.team and phase == Phase.LIVE:
 		scores[killer.team] += KILL_POINTS
@@ -553,7 +595,7 @@ func _net_kill(victim_id: int, killer_id: int, assists: Array, pos: Vector3) -> 
 			s.assists += 1
 			s.score += 40
 	FX.explosion(arena, pos, v.radius * 1.4, App.team_color(v.team).lerp(Color(1, 0.6, 0.3), 0.6))
-	arena.on_kill(v, k, assists)
+	arena.on_kill(v, k, assists, killer_id)
 
 
 @rpc("authority", "call_remote", "reliable")

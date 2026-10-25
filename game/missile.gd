@@ -6,7 +6,7 @@ extends Node3D
 
 var shooter_id := -1
 var team := 0
-var target: Ship
+var target = null  # Ship or MothershipPart
 var wdef: Dictionary
 var dir := Vector3.FORWARD
 var speed := 120.0
@@ -17,7 +17,7 @@ var _flame: MeshInstance3D
 var _done := false
 
 
-func setup(a: Arena, shooter: int, t: int, origin: Vector3, direction: Vector3, tgt: Ship, inherit: float) -> void:
+func setup(a: Arena, shooter: int, t: int, origin: Vector3, direction: Vector3, tgt: Node3D, inherit: float) -> void:
 	arena = a
 	shooter_id = shooter
 	team = t
@@ -63,16 +63,17 @@ func _physics_process(delta: float) -> void:
 		_detonate(global_position, null)
 		return
 	speed = move_toward(speed, float(wdef.speed), delta * 260.0)
-	if target and target.alive and life < float(wdef.life) - 0.25:
-		var to := target.global_position - global_position
+	if target and is_instance_valid(target) and target.alive and life < float(wdef.life) - 0.25:
+		var aim: Vector3 = target.aim_center() if target is MothershipPart else target.global_position
+		var to := aim - global_position
 		var t_hit := to.length() / maxf(speed, 1.0)
-		var lead := target.global_position + target.velocity * minf(t_hit, 1.5)
+		var lead: Vector3 = aim + target.velocity * minf(t_hit, 1.5)
 		var desired := (lead - global_position).normalized()
 		var max_turn: float = float(wdef.turn) * delta
 		var ang := dir.angle_to(desired)
 		if ang > 0.0001:
 			dir = dir.slerp(desired, minf(1.0, max_turn / ang)).normalized()
-		if to.length() < 9.0:
+		if to.length() < (9.0 if target is Ship else 20.0):
 			_detonate(global_position, target)
 			return
 	var from := global_position
@@ -84,7 +85,9 @@ func _physics_process(delta: float) -> void:
 	var hit := arena.raycast(from, to_pos, exclude)
 	if not hit.is_empty():
 		var col: Object = hit.collider
-		if not (col.has_meta("ship") and (col.get_meta("ship") as Ship).team == team):
+		var friendly := (col.has_meta("ship") and (col.get_meta("ship") as Ship).team == team) \
+			or (col.has_meta("mteam") and int(col.get_meta("mteam")) == team)
+		if not friendly:
 			_detonate(hit.position, col.get_meta("ship") if col.has_meta("ship") else null, col)
 			return
 	global_position = to_pos
@@ -94,11 +97,13 @@ func _physics_process(delta: float) -> void:
 		_flame.set_instance_shader_parameter("intensity", 0.8 + randf() * 0.4)
 
 
-func _detonate(pos: Vector3, direct: Ship, collider: Object = null) -> void:
+func _detonate(pos: Vector3, direct: Node3D, collider: Object = null) -> void:
 	_done = true
 	FX.explosion(arena, pos, 4.5, Color(1.0, 0.55, 0.25), false)
 	if multiplayer.is_server():
 		arena.ctl.server_splash(pos, float(wdef.splash), float(wdef.damage), wdef, shooter_id, team, direct)
+		if arena.siege:
+			arena.siege.splash(pos, float(wdef.splash), float(wdef.damage), wdef, shooter_id, team, collider)
 		if collider and collider.has_meta("asteroid"):
 			arena.field.damage(int(collider.get_meta("asteroid")), float(wdef.damage) * 1.5, pos, dir)
 	arena.missiles.erase(self)

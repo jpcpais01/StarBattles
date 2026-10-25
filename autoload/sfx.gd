@@ -154,6 +154,8 @@ func generate_all() -> void:
 		["rock_break", _rock_break], ["engine", _engine_loop], ["boost", _boost],
 		["capture", _capture], ["lock", _lock_tone], ["alarm", _alarm], ["kill", _kill],
 		["countdown", _countdown], ["spawn", _spawn_whoosh],
+		["flak", _flak], ["cannon", _cannon], ["shield_down", _shield_down],
+		["boom_huge", _explosion.bind(5.5, 1.6)], ["warp", _warp],
 	]
 	for i in defs.size():
 		var buf: PackedFloat32Array = defs[i][1].call()
@@ -398,6 +400,65 @@ func _boost() -> PackedFloat32Array:
 		lp += (_noise() - lp) * (0.03 + 0.3 * t)
 		var env := minf(t * 8.0, 1.0) * exp(-t * 2.5)
 		b[i] = lp * 2.2 * env + sin(TAU * (80.0 + 200.0 * t) * t) * 0.2 * env
+	return b
+
+
+## Capital flak: a hard, short double-thump.
+func _flak() -> PackedFloat32Array:
+	var b := _buf(0.45)
+	var lp := 0.0
+	for i in b.size():
+		var t := float(i) / RATE
+		lp += (_noise() - lp) * 0.35
+		var thump := sin(TAU * (70.0 + 140.0 * exp(-t * 30.0)) * t) * exp(-t * 14.0)
+		b[i] = (lp * exp(-t * 40.0) * 0.8 + thump * 0.8) * 0.8
+	return b
+
+
+## Heavy capital cannon: a deep concussive boom with a long tail.
+func _cannon() -> PackedFloat32Array:
+	var b := _buf(1.8)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in b.size():
+		var t := float(i) / RATE
+		lp += (_noise() - lp) * (0.06 + 0.5 * exp(-t * 25.0))
+		lp2 += (lp - lp2) * 0.2
+		var boom := sin(TAU * (28.0 + 70.0 * exp(-t * 7.0)) * t) * exp(-t * 2.2)
+		b[i] = (lp2 * 2.4 * exp(-t * 3.0) + boom * 0.9) * 0.9
+	return b
+
+
+## Shield collapse: a falling power-down whine over crackling static.
+func _shield_down() -> PackedFloat32Array:
+	var b := _buf(3.2)
+	var phase := 0.0
+	for i in b.size():
+		var t := float(i) / RATE
+		var f := 900.0 * exp(-t * 1.3) + 40.0
+		phase += TAU * f / RATE
+		var whine := (sin(phase) + 0.4 * sin(phase * 2.01)) * exp(-t * 0.9) * 0.3
+		var crackle := _noise() * 0.35 * exp(-t * 1.6) * (0.5 + 0.5 * signf(sin(TAU * 13.0 * t)))
+		var sub := sin(TAU * 36.0 * t) * minf(t * 4.0, 1.0) * exp(-t * 1.2) * 0.5
+		b[i] = whine + crackle + sub
+	return b
+
+
+## Hyperspace jump: rising roar that snaps into a thump.
+func _warp() -> PackedFloat32Array:
+	var b := _buf(2.6)
+	var lp := 0.0
+	var phase := 0.0
+	for i in b.size():
+		var t := float(i) / RATE
+		var rise := minf(t / 1.6, 1.0)
+		lp += (_noise() - lp) * (0.02 + 0.4 * rise * rise)
+		phase += TAU * (60.0 + 900.0 * rise * rise) / RATE
+		var env := rise if t < 1.6 else exp(-(t - 1.6) * 5.0)
+		var snap := 0.0
+		if t > 1.6:
+			snap = sin(TAU * 45.0 * t) * exp(-(t - 1.6) * 3.0) * 0.9
+		b[i] = (lp * 1.8 + sin(phase) * 0.25) * env + snap
 	return b
 
 

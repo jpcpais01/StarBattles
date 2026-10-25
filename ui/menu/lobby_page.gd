@@ -1,9 +1,11 @@
 extends "res://ui/menu/page.gd"
-## Pre-battle lobby: two team columns, host can swap teams and launch.
+## Pre-battle lobby: two team columns, host can swap teams, pick the mode
+## (Conquest or Mothership Siege) and launch.
 
 var _cols: HBoxContainer
 var _launch: Button
 var _info: Label
+var _modes: HBoxContainer
 
 
 func _init() -> void:
@@ -13,6 +15,9 @@ func _init() -> void:
 func build() -> void:
 	_info = UI.label("", 19, App.TEXT_DIM)
 	content.add_child(_info)
+	_modes = HBoxContainer.new()
+	_modes.add_theme_constant_override("separation", 12)
+	content.add_child(_modes)
 	_cols = HBoxContainer.new()
 	_cols.add_theme_constant_override("separation", 28)
 	_cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -22,7 +27,7 @@ func build() -> void:
 		Net.leave()
 		close()))
 	bottom.add_child(UI.hspacer())
-	_launch = UI.button("LAUNCH BATTLE", func(): Net.start_match({}), true)
+	_launch = UI.button("LAUNCH BATTLE", func(): Net.start_match({"mode": Net.match_mode}), true)
 	_launch.custom_minimum_size.x = 320
 	bottom.add_child(_launch)
 	content.add_child(bottom)
@@ -41,6 +46,19 @@ func _refresh() -> void:
 	_info.text = "%s  ·  %d pilots  ·  %s" % [Net.lobby_name, Net.players.size(),
 		"You are hosting" if Net.is_host() else "Waiting for the host to launch"]
 	_launch.visible = Net.is_host()
+	var siege := Net.match_mode == "siege"
+	for c in _modes.get_children():
+		c.queue_free()
+	_modes.add_child(UI.label("MODE", 18, App.TEXT_DIM, "display_semi"))
+	for m in [["conquest", "CONQUEST"], ["siege", "MOTHERSHIP SIEGE"]]:
+		var on: bool = Net.match_mode == m[0]
+		if Net.is_host():
+			var b := UI.button(m[1], Net.set_match_mode.bind(m[0]), on)
+			_modes.add_child(b)
+		elif on:
+			_modes.add_child(UI.pill(m[1], App.ACCENT))
+	if siege:
+		_modes.add_child(UI.label("%s defends the %s, %s attacks it" % [App.TEAM_NAMES[SiegeRules.DEFENDERS], Mothership.DISPLAY_NAME, App.TEAM_NAMES[SiegeRules.ATTACKERS]], 16, App.TEXT_DIM))
 	for c in _cols.get_children():
 		c.queue_free()
 	for t in 2:
@@ -49,7 +67,10 @@ func _refresh() -> void:
 		var p := UI.panel(v)
 		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_cols.add_child(p)
-		v.add_child(UI.label(App.TEAM_NAMES[t], 36, App.team_color(t), "display"))
+		var head: String = App.TEAM_NAMES[t]
+		if siege:
+			head += "  ·  " + ("DEFEND" if t == SiegeRules.DEFENDERS else "ATTACK")
+		v.add_child(UI.label(head, 36, App.team_color(t), "display"))
 		var count := 0
 		for pid in Net.players.keys():
 			var info: Dictionary = Net.players[pid]

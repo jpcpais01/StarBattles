@@ -14,6 +14,7 @@ var _shooter := PackedInt32Array()
 var _team := PackedInt32Array()
 var _color := PackedColorArray()
 var _len := PackedFloat32Array()
+var _size := PackedFloat32Array()
 var _weapon: Array[String] = []
 var _buffer := PackedFloat32Array()
 var arena: Arena
@@ -49,6 +50,7 @@ func spawn(shooter_id: int, team: int, origin: Vector3, dir: Vector3, weapon_id:
 	var c: Color = w.color if team == 0 else w.color.lerp(Color(1.0, 0.45, 0.25), 0.75)
 	_color.append(c)
 	_len.append(0.0)
+	_size.append(float(w.get("size", 1.0)))
 	_weapon.append(weapon_id)
 
 
@@ -61,6 +63,7 @@ func _remove(i: int) -> void:
 	_team[i] = _team[last]
 	_color[i] = _color[last]
 	_len[i] = _len[last]
+	_size[i] = _size[last]
 	_weapon[i] = _weapon[last]
 	_pos.resize(last)
 	_vel.resize(last)
@@ -69,6 +72,7 @@ func _remove(i: int) -> void:
 	_team.resize(last)
 	_color.resize(last)
 	_len.resize(last)
+	_size.resize(last)
 	_weapon.resize(last)
 
 
@@ -95,9 +99,10 @@ func _physics_process(delta: float) -> void:
 		var hit := space.intersect_ray(q)
 		if not hit.is_empty():
 			var col: Object = hit.collider
-			var friendly := col.has_meta("ship") and (col.get_meta("ship") as Ship).team == _team[i]
+			var friendly := (col.has_meta("ship") and (col.get_meta("ship") as Ship).team == _team[i]) \
+				or (col.has_meta("mteam") and int(col.get_meta("mteam")) == _team[i])
 			if not friendly:
-				arena.on_bolt_hit(_shooter[i], _weapon[i], hit, _vel[i].normalized(), _color[i])
+				arena.on_bolt_hit(_shooter[i], _weapon[i], hit, _vel[i].normalized(), _color[i], _team[i])
 				_remove(i)
 				continue
 		_pos[i] = to
@@ -118,8 +123,8 @@ func _process(_delta: float) -> void:
 		var p := _pos[i]
 		# Bolts get a little fatter far away so they stay readable.
 		var dist := p.distance_to(cam_pos)
-		var w := 0.55 + dist * 0.0012
-		var l := (6.0 + dist * 0.006) * _len[i] + 1.0
+		var w := (0.55 + dist * 0.0012) * _size[i]
+		var l := ((6.0 + dist * 0.006) * _len[i] + 1.0) * sqrt(_size[i])
 		var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT
 		var b := Basis.looking_at(dir, up)
 		var bx := b.x * w

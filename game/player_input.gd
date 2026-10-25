@@ -89,7 +89,9 @@ func get_input(ship: Ship, delta: float) -> Dictionary:
 	inp.fire1 = fire1
 	inp.fire2 = fire2
 	inp.strafe = strafe
-	var tgt := _pick_target(ship)
+	var tgt: Node3D = _pick_target(ship)
+	if tgt == null and arena.siege:
+		tgt = arena.siege.pick_part_target(ship)
 	inp.target = tgt
 	inp.aim = _aim_point(ship, tgt)
 	return inp
@@ -134,11 +136,12 @@ func _cycle_target() -> void:
 
 ## Weapons converge ahead of the nose; with aim assist they snap to the
 ## target's lead point when it is close to the crosshair.
-func _aim_point(ship: Ship, tgt: Ship) -> Vector3:
+func _aim_point(ship: Ship, tgt) -> Vector3:
 	var fwd := -ship.global_basis.z
 	var aim := ship.global_position + fwd * 700.0
 	if tgt and Settings.get_value("aim_assist", true):
-		var lead := Arena.lead_point(ship.global_position, ship.velocity, tgt.global_position, tgt.velocity,
+		var tpos: Vector3 = tgt.aim_center() if tgt is MothershipPart else tgt.global_position
+		var lead := Arena.lead_point(ship.global_position, ship.velocity, tpos, tgt.velocity,
 			ShipLibrary.primary_projectile_speed(ship.def_id))
 		var to := (lead - ship.global_position)
 		var cone := 0.985 if not App.is_mobile else 0.965

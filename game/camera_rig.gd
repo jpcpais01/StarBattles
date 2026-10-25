@@ -15,6 +15,10 @@ var _dust: GPUParticles3D
 var _fov := 72.0
 var _smooth_basis := Basis.IDENTITY
 var _initialized := false
+var _cine: Node3D
+var _cine_dist := 2000.0
+var _cine_left := 0.0
+var _cine_angle := 0.0
 
 
 func _ready() -> void:
@@ -65,6 +69,17 @@ func _build_dust() -> void:
 	add_child(_dust)
 
 
+## Pulls back to a slow wide orbit around `target` for `seconds` (set pieces).
+func cinematic(target: Node3D, dist: float, seconds: float) -> void:
+	if App.is_dedicated or target == null:
+		return
+	_cine = target
+	_cine_dist = dist
+	_cine_left = seconds
+	var to := global_position - target.global_position
+	_cine_angle = atan2(to.z, to.x)
+
+
 func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount * float(Settings.get_value("camera_shake", 1.0)), 0.0, 1.0)
 
@@ -72,9 +87,12 @@ func add_trauma(amount: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	trauma = maxf(0.0, trauma - delta * 1.4)
-	if ship == null or not is_instance_valid(ship):
+	if _cine_left > 0.0 and is_instance_valid(_cine):
+		_cine_left -= delta
+		_cinematic(delta)
+	elif ship == null or not is_instance_valid(ship):
 		return
-	if ship.alive:
+	elif ship.alive:
 		_follow(delta)
 	else:
 		_orbit(delta)
@@ -114,6 +132,16 @@ func _follow(delta: float) -> void:
 	var target_fov := base_fov + speed_k * 8.0 + (6.0 if ship.boosting else 0.0)
 	_fov = lerpf(_fov, target_fov, 1.0 - exp(-delta * 4.0))
 	fov = _fov
+
+
+func _cinematic(delta: float) -> void:
+	_cine_angle += delta * 0.06
+	var c := _cine.global_position
+	var p := c + Vector3(cos(_cine_angle), 0.32, sin(_cine_angle)) * _cine_dist
+	global_position = global_position.lerp(p, 1.0 - exp(-delta * 1.2))
+	look_at(c, Vector3.UP)
+	fov = lerpf(fov, 60.0, 1.0 - exp(-delta * 2.0))
+	_initialized = false
 
 
 func _orbit(delta: float) -> void:

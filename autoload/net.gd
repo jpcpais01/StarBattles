@@ -17,6 +17,8 @@ const PROTOCOL := 1
 ## peer_id -> {name, team, ship, level, version}
 var players: Dictionary = {}
 var lobby_name := ""
+## Game mode the host will launch: "conquest" or "siege".
+var match_mode := "conquest"
 var in_session := false
 var in_match := false
 var dedicated := false
@@ -168,7 +170,7 @@ func _register(info: Dictionary) -> void:
 		return
 	info["name"] = str(info.get("name", "PILOT")).substr(0, 16)
 	_add_player(id, info)
-	_sync_players.rpc(players, lobby_name)
+	_sync_players.rpc(players, lobby_name, match_mode)
 	players_changed.emit()
 	if in_match:
 		_begin_match.rpc_id(id, App.match_config)
@@ -180,10 +182,11 @@ func _rejected(reason: String) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _sync_players(p: Dictionary, lname: String) -> void:
+func _sync_players(p: Dictionary, lname: String, mode: String) -> void:
 	var first := players.is_empty()
 	players = p
 	lobby_name = lname
+	match_mode = mode
 	players_changed.emit()
 	if first:
 		connection_succeeded.emit()
@@ -191,7 +194,7 @@ func _sync_players(p: Dictionary, lname: String) -> void:
 
 func _on_peer_disconnected(id: int) -> void:
 	if players.erase(id) and is_host():
-		_sync_players.rpc(players, lobby_name)
+		_sync_players.rpc(players, lobby_name, match_mode)
 	players_changed.emit()
 
 
@@ -221,14 +224,26 @@ func _update_ship(ship_id: String) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if players.has(id):
 		players[id].ship = ship_id
-		_sync_players.rpc(players, lobby_name)
+		_sync_players.rpc(players, lobby_name, match_mode)
+
+
+## Host: pick the mode for the next launch.
+func set_match_mode(mode: String) -> void:
+	if not is_host() or mode == match_mode:
+		return
+	match_mode = mode
+	if is_online():
+		_sync_players.rpc(players, lobby_name, match_mode)
+	players_changed.emit()
+	if public_lobby:
+		_publish_lobby()
 
 
 func swap_team(id: int) -> void:
 	if is_host() and players.has(id):
 		players[id].team = 1 - int(players[id].team)
 		if is_online():
-			_sync_players.rpc(players, lobby_name)
+			_sync_players.rpc(players, lobby_name, match_mode)
 		players_changed.emit()
 
 
@@ -290,7 +305,7 @@ func _publish_lobby() -> void:
 		return
 	Firebase.set_doc("lobbies/%s" % Firebase.uid, {
 		"name": lobby_name, "ip": public_ip, "port": PORT, "players": players.size(),
-		"max": MAX_PLAYERS, "version": App.version, "in_match": in_match,
+		"max": MAX_PLAYERS, "version": App.version, "in_match": in_match, "mode": match_mode,
 		"updated": int(Time.get_unix_time_from_system())})
 
 
@@ -300,7 +315,7 @@ func _process(delta: float) -> void:
 		if _broadcast_timer <= 0.0:
 			_broadcast_timer = 1.0
 			var msg := JSON.stringify({"sb": PROTOCOL, "name": lobby_name, "port": PORT,
-				"players": players.size(), "max": MAX_PLAYERS, "version": App.version, "in_match": in_match})
+				"players": players.size(), "max": MAX_PLAYERS, "version": App.version, "in_match": in_match, "mode": match_mode})
 			_broadcast.put_packet(msg.to_utf8_buffer())
 	if public_lobby and is_host():
 		_heartbeat_timer -= delta

@@ -19,6 +19,7 @@ boot_splash/bg_color=Color(0.012, 0.016, 0.03, 1)
 boot_splash/show_image=false
 boot_splash/fullsize=false
 config/icon="res://icon.svg"
+config/windows_native_icon="res://assets/icon/icon.ico"
 
 [audio]
 

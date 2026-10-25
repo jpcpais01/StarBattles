@@ -1,6 +1,13 @@
 {
 	"groups": [
 		{
+			"title": "A new app icon",
+			"time": "2026-10-25 · 17:00 UTC",
+			"entries": [
+				"Star Battles has its own app icon: a Silverwing streaking past Jupiter and Io with its cannons blazing. It shows on your Android home screen (including Android 13+ themed icons) and on the Windows .exe, taskbar and window."
+			]
+		},
+		{
 			"title": "Smoother flying and seeker locks",
 			"time": "2026-10-25 · 16:00 UTC",
 			"entries": [

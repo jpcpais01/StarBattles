@@ -4,15 +4,60 @@
   "source_forward": "-x",
   "length_m": 16.0,
   "weapons": [
-    {"weapon": "pulse_cannon", "gimbal": 8.0, "turret": false},
-    {"weapon": "pulse_cannon", "gimbal": 8.0, "turret": false}
+    {
+      "weapon": "pulse_cannon",
+      "gimbal": 8.0,
+      "turret": false
+    },
+    {
+      "weapon": "pulse_cannon",
+      "gimbal": 8.0,
+      "turret": false
+    }
   ],
-  "canopy": {"min": [-0.045, 0.04, -0.2], "max": [0.045, 0.2, 0.02], "min_up": 0.35},
+  "canopy": {
+    "min": [
+      -0.045,
+      0.04,
+      -0.2
+    ],
+    "max": [
+      0.045,
+      0.2,
+      0.02
+    ],
+    "min_up": 0.35
+  },
   "masks": {
-    "hull":   [0, 0, 0, 1],
-    "canopy": [0, 0, 0, 1],
-    "base":   [1, 0, 0, 1],
-    "barrel": [0, 0, 1, 1],
-    "engine": [0, 0, 1, 1]
+    "hull": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "canopy": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "base": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "barrel": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "engine": [
+      0,
+      0,
+      1,
+      0
+    ]
   }
 }

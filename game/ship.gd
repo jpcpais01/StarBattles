@@ -205,6 +205,7 @@ func _layout() -> Dictionary:
 			if n:
 				var xf := n.global_transform if n.is_inside_tree() else _model_xform(root, n)
 				n.get_parent().remove_child(n)
+				n.owner = null
 				n.transform = Transform3D(Basis.IDENTITY, -pos) * xf
 				parts[key[1]].append(n)
 		if h.has("muzzles"):

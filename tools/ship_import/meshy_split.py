@@ -181,7 +181,10 @@ def split_normals(P, I, crease_deg=40.0):
         keep = n @ fn[f] >= cos_limit
         s = (n[keep] * area[faces][keep, None]).sum(0)
         normals[k] = s / max(np.linalg.norm(s), 1e-20)
-    return P[corners], normals, np.arange(len(corners)).reshape(-1, 3)
+    # Merge corners that ended up with the same position and normal.
+    key = np.c_[P[corners], np.round(normals, 4)]
+    uniq, inverse = np.unique(key, axis=0, return_inverse=True)
+    return uniq[:, :3], uniq[:, 3:], inverse.ravel().reshape(-1, 3)
 
 
 def cluster(boxes, gap):

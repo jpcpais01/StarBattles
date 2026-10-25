@@ -44,9 +44,12 @@ lines, grime and emissive strips. It is driven by vertex colour masks
 optional low-res colour mask texture (`color_mask`) baked from Meshy's textured
 export. Meshy's own 8k textures are not used (too soft up close).
 
-## Untextured multi-piece GLBs (next step)
+## Untextured multi-piece GLBs
 
-Meshy exports arrive as one mesh made of ~100 loose pieces. The planned importer
-splits it by connected components, classifies pieces as hull / weapon / engine
-by position and shape, writes the `.ship.json` above automatically and keeps the
-weapon pieces as separately animated parts. Budget: ~30k triangles per ship.
+Meshy exports arrive as one mesh made of ~100 loose pieces.
+`tools/ship_import/meshy_split.py` splits it by connected components, sorts the
+pieces into hull, canopy, turret bases, barrels and engines, re-orients and
+scales it to game space, writes vertex colour masks, and writes the GLB and the
+`.ship.json` above. Each ship has a small config in `tools/ship_import/configs/`,
+and the raw Meshy file stays in `assets_src/`. See `tools/ship_import/README.md`.
+Budget: ~30k triangles per ship.

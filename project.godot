@@ -1,0 +1,90 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Star Battles"
+config/description="10v10 starfighter combat in the shadow of Saturn."
+config/version="0.1.0"
+run/main_scene="res://scenes/boot.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+boot_splash/bg_color=Color(0.012, 0.016, 0.03, 1)
+boot_splash/show_image=false
+boot_splash/fullsize=false
+config/icon="res://icon.svg"
+
+[audio]
+
+driver/enable_input=false
+general/default_playback_type.mobile=0
+
+[autoload]
+
+App="*res://autoload/app.gd"
+Settings="*res://autoload/settings.gd"
+Sfx="*res://autoload/sfx.gd"
+Firebase="*res://autoload/firebase.gd"
+Profile="*res://autoload/profile.gd"
+Net="*res://autoload/net.gd"
+Updater="*res://autoload/updater.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+window/vsync/vsync_mode=1
+window/energy_saving/keep_screen_on=true
+
+[gui]
+
+common/snap_controls_to_pixels=true
+theme/default_font_antialiasing=1
+theme/default_font_subpixel_positioning=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=60
+common/max_physics_steps_per_frame=4
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true
+textures/vram_compression/import_s3tc_bptc=true
+anti_aliasing/quality/msaa_3d=1
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=1
+reflections/sky_reflections/roughness_layers=6
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+shader_compiler/shader_cache/enabled=true
+
+[shader_globals]
+
+sun_dir={
+"type": "vec3",
+"value": Vector3(-0.8, 0.25, 0.4)
+}
+sun_color={
+"type": "color",
+"value": Color(1, 0.96, 0.9, 1)
+}

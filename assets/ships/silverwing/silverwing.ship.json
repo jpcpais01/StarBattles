@@ -65,6 +65,18 @@
       "weapon": "pulse_cannon",
       "gimbal": 8.0,
       "turret": false
+    },
+    {
+      "name": "missile_pod",
+      "pos": [
+        0.0,
+        -0.82,
+        0.3
+      ],
+      "weapon": "missile_pod",
+      "gimbal": 0.0,
+      "turret": false,
+      "scale": 0.95
     }
   ],
   "engines": [

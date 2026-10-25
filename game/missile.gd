@@ -16,6 +16,9 @@ var _trail: Trail3D
 var _flame: MeshInstance3D
 var _done := false
 
+## Match-wide tallies for the autotest report: launched, homing, fused on a target.
+static var stats := {"fired": 0, "homing": 0, "hits": 0}
+
 
 func setup(a: Arena, shooter: int, t: int, origin: Vector3, direction: Vector3, tgt: Node3D, inherit: float) -> void:
 	arena = a
@@ -27,6 +30,9 @@ func setup(a: Arena, shooter: int, t: int, origin: Vector3, direction: Vector3, 
 	speed = 90.0 + inherit
 	life = wdef.life
 	global_position = origin
+	stats.fired += 1
+	if tgt:
+		stats.homing += 1
 	if App.is_dedicated:
 		return
 	var k := MeshKit.new()
@@ -99,6 +105,8 @@ func _physics_process(delta: float) -> void:
 
 func _detonate(pos: Vector3, direct: Node3D, collider: Object = null) -> void:
 	_done = true
+	if direct:
+		stats.hits += 1
 	FX.explosion(arena, pos, 4.5, Color(1.0, 0.55, 0.25), false)
 	if multiplayer.is_server():
 		arena.ctl.server_splash(pos, float(wdef.splash), float(wdef.damage), wdef, shooter_id, team, direct)

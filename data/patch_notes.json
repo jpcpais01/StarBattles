@@ -1,6 +1,17 @@
 {
 	"groups": [
 		{
+			"title": "Smoother flying and seeker locks",
+			"time": "2026-10-25 · 16:00 UTC",
+			"entries": [
+				"New default mouse steering, Mouse Aim: move the mouse to place the reticle and your ship flies smoothly onto it without overshooting. Tiny mouse movements now make tiny, precise corrections. Prefer the old joystick style? Pick Virtual Stick in Settings › Controls.",
+				"Touch, gamepad and Virtual Stick steering now respond almost linearly, so small thumb movements turn the ship instead of doing nothing. Tune it with the new Stick response curve slider.",
+				"Light aim assist: when your aim is right next to an enemy's lead point, the reticle is gently pulled onto it and slows down slightly so you can track. Adjust it or switch it off with the Aim assist slider in Settings › Gameplay.",
+				"Seeker missiles are clearer: keep an enemy inside the lock brackets around your crosshair, watch the ring fill as the lock tone speeds up, then fire on LOCKED. The HUD tells you when you're locking, locked, reloading or dumb-firing, and locks no longer drop when two enemies are close together. Silverwing and Wraith now carry a seeker pod too.",
+				"F (or T, LB, or the new TARGET touch button) selects the enemy closest to your reticle; press again to step to the next. Your selected target is labelled and stays marked at the screen edge with its range, and seekers lock onto it first."
+			]
+		},
+		{
 			"title": "Mothership Siege",
 			"time": "2026-10-25 · 15:00 UTC",
 			"entries": [

@@ -10,6 +10,7 @@ var _buttons: Dictionary = {}  # name -> {center, radius, id}
 var _throttle_id := -1
 var throttle := 0.65
 var throttle_active := false
+var _target_pressed := false
 var _font: Font
 
 
@@ -17,7 +18,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = UI.font("display_semi")
-	for n in ["fire1", "fire2", "boost"]:
+	for n in ["fire1", "fire2", "boost", "target"]:
 		_buttons[n] = {"center": Vector2.ZERO, "radius": 0.0, "id": -1}
 	resized.connect(_layout)
 	_layout()
@@ -32,6 +33,8 @@ func _layout() -> void:
 	_buttons.fire2.radius = 70 * s
 	_buttons.boost.center = br + Vector2(-60 * s, -200 * s)
 	_buttons.boost.radius = 66 * s
+	_buttons.target.center = br + Vector2(-250 * s, -150 * s)
+	_buttons.target.radius = 50 * s
 
 
 func _throttle_rect() -> Rect2:
@@ -46,10 +49,12 @@ func state() -> Dictionary:
 		stick = (_stick_pos - _stick_origin) / (120.0 * s)
 		if stick.length() > 1.0:
 			stick = stick.normalized()
-		# Soft response curve.
-		stick = stick.normalized() * pow(stick.length(), 1.4) if stick.length() > 0.02 else Vector2.ZERO
+	# Response shaping (deadzone + curve) happens in PlayerInput.shape().
+	var tp := _target_pressed
+	_target_pressed = false
 	return {"stick": stick, "fire1": _buttons.fire1.id >= 0, "fire2": _buttons.fire2.id >= 0,
-		"boost": _buttons.boost.id >= 0, "throttle": throttle, "throttle_active": throttle_active}
+		"boost": _buttons.boost.id >= 0, "throttle": throttle, "throttle_active": throttle_active,
+		"target_pressed": tp}
 
 
 func _input(event: InputEvent) -> void:
@@ -77,6 +82,8 @@ func _press(id: int, p: Vector2) -> void:
 		var b: Dictionary = _buttons[n]
 		if p.distance_to(b.center) < b.radius * 1.15:
 			b.id = id
+			if n == "target":
+				_target_pressed = true
 			Settings.vibrate(12)
 			return
 	if p.x < size.x * 0.5 and _stick_id < 0:
@@ -117,8 +124,19 @@ func _draw() -> void:
 		var hint := Vector2(260 * s, size.y - 260 * s)
 		draw_arc(hint, 110 * s, 0, TAU, 48, Color(1, 1, 1, 0.08 * a), 2.0 * s, true)
 		_label(hint, "STEER", 18 * s, Color(1, 1, 1, 0.25 * a))
-	var names := {"fire1": "FIRE", "fire2": "MISSILE", "boost": "BOOST"}
-	var cols := {"fire1": App.BAD, "fire2": App.WARN, "boost": App.ACCENT}
+	var names := {"fire1": "FIRE", "fire2": "MISSILE", "boost": "BOOST", "target": "TARGET"}
+	var cols := {"fire1": App.BAD, "fire2": App.WARN, "boost": App.ACCENT, "target": Color(0.75, 0.85, 1.0)}
+	# The missile button shows the seeker lock filling up.
+	var me: Ship = Arena.current.local_ship if Arena.current else null
+	if me and me.alive and me.has_missiles():
+		var fb2: Dictionary = _buttons.fire2
+		if me.lock_target and me.lock_progress > 0.0:
+			var locked := me.lock_progress >= 1.0
+			var lc := App.BAD if locked else App.WARN
+			draw_arc(fb2.center, fb2.radius + 9 * s, -PI * 0.5, -PI * 0.5 + TAU * me.lock_progress, 48, Color(lc, 0.9 * a), 5.0 * s, true)
+			names.fire2 = "LOCKED" if locked else "LOCKING"
+		if not me.missile_ready():
+			names.fire2 = "%d%%" % int(me.missile_reload_fraction() * 100.0)
 	for n in _buttons.keys():
 		var b: Dictionary = _buttons[n]
 		var down: bool = b.id >= 0

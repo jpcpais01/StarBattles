@@ -50,11 +50,14 @@ func _show_tab(i: int) -> void:
 			if not App.is_mobile:
 				_selector("Display mode  (F11 / Alt+Enter)", Settings.WINDOW_MODE_NAMES, "window_mode", [0, 1, 2])
 		1:
+			if not App.is_mobile:
+				_selector("Mouse steering", ["MOUSE AIM", "VIRTUAL STICK"], "mouse_steer", [0, 1])
 			_slider("Mouse sensitivity", "mouse_sens", 0.2, 3.0, 0.05, func(v): return "%.2f×" % v)
 			if not App.is_mobile:
-				_slider("Mouse aim deadzone", "mouse_deadzone", 0.0, 0.3, 0.01, func(v): return "%d%%" % int(v * 100.0))
-				_toggle("Mouse aim returns to centre", "mouse_recenter")
+				_slider("Virtual stick deadzone", "mouse_deadzone", 0.0, 0.3, 0.01, func(v): return "%d%%" % int(v * 100.0))
+				_toggle("Virtual stick returns to centre", "mouse_recenter")
 			_slider("Touch sensitivity", "touch_sens", 0.3, 2.5, 0.05, func(v): return "%.2f×" % v)
+			_slider("Stick response curve", "aim_expo", 0.0, 0.8, 0.05, func(v): return "LINEAR" if v < 0.03 else ("SOFT CENTRE %d%%" % int(v * 100.0)))
 			_toggle("Invert pitch", "invert_y")
 			_toggle("Vibration", "haptics")
 			_slider("Touch controls opacity", "touch_opacity", 0.2, 1.0, 0.05, func(v): return "%d%%" % int(v * 100.0))
@@ -66,7 +69,7 @@ func _show_tab(i: int) -> void:
 			_slider("Music", "vol_music", 0.0, 1.0, 0.01, _pct)
 			_slider("Interface", "vol_ui", 0.0, 1.0, 0.01, _pct)
 		3:
-			_toggle("Aim assist", "aim_assist")
+			_slider("Aim assist", "aim_assist_amt", 0.0, 1.0, 0.05, func(v): return "OFF" if v < 0.01 else "%d%%" % int(v * 100.0))
 			_slider("Camera shake", "camera_shake", 0.0, 1.5, 0.05, _pct)
 			_selector("Bot difficulty", ["ROOKIE", "VETERAN", "ACE"], "bot_difficulty", [0, 1, 2])
 
@@ -146,7 +149,7 @@ func _toggle(label_text: String, key: String) -> void:
 
 
 func _keys() -> void:
-	var l := UI.label("Keyboard & mouse: mouse moves the aim reticle and the ship turns toward it · W/S throttle · A/D roll · Q/E strafe · Shift boost · LMB fire · RMB missiles · F target · C look back · X / middle mouse re-centre aim · F11 fullscreen · Tab scores", 17, App.TEXT_DIM)
+	var l := UI.label("Keyboard & mouse: mouse places the aim reticle and the ship flies to it · W/S throttle · A/D roll · Q/E strafe · Shift boost · LMB fire · RMB seeker missiles (lock on first) · F / T pick the target nearest your reticle, press again for the next · C look back · X / middle mouse re-centre aim · F11 fullscreen · Tab scores", 17, App.TEXT_DIM)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(UI.margin(l, 0, 14, 0, 4))
 	var g := UI.label("Gamepad: left stick steers · right stick roll/throttle · RT fire · LT missiles · RB boost · LB target", 17, App.TEXT_DIM)

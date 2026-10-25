@@ -1,5 +1,5 @@
 extends Node3D
-## Home screen. A live 3D hangar shot (your ship idling in front of Saturn)
+## Home screen. A live 3D hangar shot (your ship idling in front of Jupiter)
 ## sits behind a console-style UI: top bar with pilot and network status,
 ## a focused-tile headline, and a row of animated tiles that open pages.
 ## The siege briefing swaps the fighter for the full-size IRON VANGUARD.
@@ -97,7 +97,7 @@ func _build_world() -> void:
 	camera = Camera3D.new()
 	camera.fov = 46.0
 	camera.near = 0.2
-	camera.far = 20000.0
+	camera.far = 60000.0
 	add_child(camera)
 	camera.make_current()
 	showcase = Node3D.new()
@@ -147,8 +147,8 @@ func _process(delta: float) -> void:
 	elif ship and is_instance_valid(ship):
 		var r := ship.radius
 		var dist := r * 3.15
-		# Framed toward Saturn so the planet hangs behind the ship.
-		var look := env.saturn_direction.rotated(Vector3.UP, deg_to_rad(-16.0 + sin(_t * 0.07) * 9.0))
+		# Framed toward Jupiter so the planet hangs behind the ship.
+		var look := env.jupiter_direction.rotated(Vector3.UP, deg_to_rad(-16.0 + sin(_t * 0.07) * 9.0))
 		look = look.rotated(look.cross(Vector3.UP).normalized(), deg_to_rad(-6.0 + sin(_t * 0.05) * 3.0))
 		var center := Vector3(0, 0, 0)
 		camera.global_position = center - look * dist + Vector3(0, r * 0.35, 0)
@@ -218,7 +218,7 @@ func _build_top_bar() -> void:
 	var mark := VBoxContainer.new()
 	mark.add_theme_constant_override("separation", -6)
 	mark.add_child(UI.label(App.GAME_TITLE, 44, Color.WHITE, "display"))
-	mark.add_child(UI.caption("Saturn front  ·  %s" % App.version_label(), 14, App.ACCENT))
+	mark.add_child(UI.caption("Europa orbit  ·  %s" % App.version_label(), 14, App.ACCENT))
 	bar.add_child(mark)
 	bar.add_child(UI.hspacer())
 	_update_chip = UI.button("", func(): open_page("update"))
@@ -394,24 +394,24 @@ func _show_capital(on: bool) -> void:
 		camera.v_offset = 0.0
 		return
 	# Broadside-on at true scale, bow angled slightly toward the camera.
-	var side := env.saturn_direction.cross(Vector3.UP).normalized()
+	var side := env.jupiter_direction.cross(Vector3.UP).normalized()
 	var z := -side.rotated(Vector3.UP, deg_to_rad(-20.0))
 	var b := Basis(Vector3.UP.cross(z).normalized(), Vector3.UP, z)
 	capital = Mothership.new()
 	add_child(capital)
 	capital.setup(null, SiegeRules.DEFENDERS, Transform3D(b, Vector3.ZERO))
-	# Saturn sits behind it, so the near side would be in shadow: a soft fill.
+	# Jupiter sits behind it, so the near side would be in shadow: a soft fill.
 	_capital_fill = OmniLight3D.new()
 	_capital_fill.light_color = Color(0.7, 0.8, 1.0)
 	_capital_fill.omni_range = 4200.0
 	_capital_fill.omni_attenuation = 0.6
 	_capital_fill.light_energy = 1.6
-	_capital_fill.position = -env.saturn_direction * 1500.0 + Vector3(0, 900.0, 0)
+	_capital_fill.position = -env.jupiter_direction * 1500.0 + Vector3(0, 900.0, 0)
 	add_child(_capital_fill)
 
 
 func _frame_capital(delta: float) -> void:
-	var look := env.saturn_direction.rotated(Vector3.UP, deg_to_rad(-10.0 + sin(_t * 0.04) * 6.0))
+	var look := env.jupiter_direction.rotated(Vector3.UP, deg_to_rad(-10.0 + sin(_t * 0.04) * 6.0))
 	look = look.rotated(look.cross(Vector3.UP).normalized(), deg_to_rad(-9.0 + sin(_t * 0.03) * 2.0))
 	camera.global_position = -look * 2300.0 + Vector3(0, 320.0, 0)
 	camera.look_at(camera.global_position + look, Vector3.UP)
@@ -504,7 +504,7 @@ func _welcome() -> void:
 	v.custom_minimum_size.x = 640
 	v.add_theme_constant_override("separation", 14)
 	center.add_child(UI.panel(v, 0.9))
-	v.add_child(UI.caption("Welcome to the Saturn front", 16, App.ACCENT))
+	v.add_child(UI.caption("Welcome to the Europa front", 16, App.ACCENT))
 	v.add_child(UI.title("CHOOSE YOUR CALLSIGN", 48))
 	var d := UI.label("This is the name other pilots see in battle. You can change it any time on the Pilot page.", 19, App.TEXT_DIM)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -12,13 +12,17 @@ main target; every build also ships a single-file Windows .exe.
 - `game/` — the battle: `arena.gd` builds the scene; `match_controller.gd` owns
   rules, bots, respawns and netcode; `ship.gd`, `weapon_mount.gd`,
   `engine_fx.gd`, `asteroid_field.gd`, `projectiles.gd`; `procgen/` builds
-  placeholder hulls, weapons and asteroids; `env/space_env.gd` is Saturn + sky.
+  placeholder hulls, weapons and asteroids; `env/space_env.gd` is the Jupiter
+  system (home moon picked from the match seed), sky, lights, eye adaptation
+  and the sky reflection probe.
   `siege/` is Mothership Siege: `siege_rules.gd` (stages, tickets, turret AI,
   server-authoritative damage), `mothership.gd` (the carrier and its set
   pieces) and `mothership_part.gd` (turrets, shield generators, reactor).
 - `ui/` — `kit/` shared widgets and theme, `boot/` loading screen, `menu/` home
   screen and pages, `hud/` in-battle HUD.
-- `shaders/` — all materials are custom shaders (no textures).
+- `shaders/` — all materials are custom shaders. The only textures are the
+  NASA planet maps in `assets/planets/` (see CREDITS.md there), drawn by
+  `planet.gdshader` as ray-traced spheres inside low-poly proxies.
 
 ## Netcode in one paragraph
 
@@ -37,6 +41,8 @@ hits. Asteroid motion is a pure function of match time.
 - Releases are cut by CI on every push to main (`.github/workflows/build.yml`),
   version `0.1.<run number>`.
 - Keep the arena under ~100k environment triangles and ships ~30k.
+- Mobile renderer stores HDR in a 0–2 range and Godot's auto-exposure does not
+  run on it, so eye adaptation is computed on the CPU in `SpaceEnv._adapt`.
 - Don't run render/perf benchmarks in CI containers; logic checks are fine:
   `godot --headless --script tools/check_scripts.gd` and
   `godot --headless -- --autotest=20` (boots, plays a bot match, prints a report).

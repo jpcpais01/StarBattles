@@ -1,6 +1,6 @@
 # Star Battles
 
-10 v 10 starfighter combat in the shadow of Saturn. Capture the three relay
+10 v 10 starfighter combat high above Europa, in the shadow of Jupiter. Capture the three relay
 stations or out-gun the enemy fleet; AI wingmen fill every empty seat.
 
 **Download:** grab the latest APK (Android) or EXE (Windows) from

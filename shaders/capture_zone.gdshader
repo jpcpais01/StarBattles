@@ -1,5 +1,9 @@
-// Holographic capture sphere: fresnel shell with a scrolling hex grid,
-// latitude scan lines and a fill wave showing capture progress.
+// Capture field around a relay station: a faint sensor bubble drawn as a
+// fine latitude/longitude graticule that only shows at grazing angles
+// (like a soap film), a slow sweep that circles it, and the capture
+// progress as luminous "fill" rising from the bottom with a rippling
+// meniscus. Contested zones flicker with interference. Seen from inside,
+// everything drops to a whisper so it never blocks the fight.
 shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
 
@@ -10,11 +14,10 @@ uniform float contested = 0.0;
 
 varying vec3 v_local;
 
-float hex(vec2 p) {
-	p.x *= 1.1547;
-	p.y += mod(floor(p.x), 2.0) * 0.5;
-	p = abs(fract(p) - 0.5);
-	return abs(max(p.x * 1.5 + p.y, p.y * 2.0) - 1.0);
+float aa_line(float x, float w) {
+	float f = abs(fract(x) - 0.5);
+	float fw = fwidth(x);
+	return 1.0 - smoothstep(w * fw, (w + 1.5) * fw, 0.5 - f);
 }
 
 void vertex() {
@@ -22,15 +25,27 @@ void vertex() {
 }
 
 void fragment() {
-	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.5);
-	vec2 uv = vec2(atan(v_local.x, v_local.z) * 4.0, v_local.y * 8.0);
-	float grid = 1.0 - smoothstep(0.0, 0.08, hex(uv * 1.3 + vec2(TIME * 0.05, 0.0)));
-	float scan = pow(0.5 + 0.5 * sin(v_local.y * 40.0 - TIME * 2.0), 18.0);
-	float fill_h = progress * 2.0 - 1.0;
-	float filled = step(v_local.y, fill_h);
-	float wave = smoothstep(0.04, 0.0, abs(v_local.y - fill_h)) * step(0.01, progress) * step(progress, 0.99);
+	float radius = length(MODEL_MATRIX[0].xyz);
+	float inside = step(distance(CAMERA_POSITION_WORLD, NODE_POSITION_WORLD), radius);
+	float ndv = abs(dot(NORMAL, VIEW));
+	float fres = pow(1.0 - ndv, 3.0);
+	float lon = atan(v_local.x, v_local.z) / 6.2831853 + TIME * 0.004;
+	float lat = asin(clamp(v_local.y, -1.0, 1.0)) / 3.1415927;
+	float grid = max(aa_line(lon * 24.0, 0.4), aa_line(lat * 12.0, 0.4));
+	float sweep_a = fract(lon - TIME * 0.05);
+	float sweep = exp(-sweep_a * 18.0) * 0.8 + exp(-(1.0 - sweep_a) * 120.0);
+
+	float fill_h = progress * 2.0 - 1.0 + step(0.995, progress) * 0.2;
+	float wave = sin(lon * 6.2831853 * 6.0 + TIME * 2.0) * 0.015 + sin(lon * 6.2831853 * 11.0 - TIME * 3.1) * 0.008;
+	float level = v_local.y - fill_h - wave;
+	float filled = 1.0 - smoothstep(-0.005, 0.005, level);
+	float active = step(0.005, progress) * step(progress, 0.995);
+	float meniscus = exp(-pow(level * 70.0, 2.0)) * active;
 	vec3 c = mix(color, capture_color, filled);
-	float pulse = 1.0 + contested * (0.5 + 0.5 * sin(TIME * 10.0));
-	float a = (fres * 0.55 + grid * fres * 0.6 + scan * 0.12 + wave * 1.5) * pulse;
-	ALBEDO = c * a * 0.9;
+
+	float flick = contested * (0.5 + 0.5 * sin(TIME * 23.0 + v_local.y * 40.0)) * step(0.5, fract(TIME * 3.0 + lon * 4.0));
+	float a = fres * 0.16 + grid * (0.012 + fres * 0.22) + sweep * grid * 0.3 * fres + filled * (0.03 + fres * 0.3) + meniscus * 1.1;
+	a *= 1.0 + flick * 1.2;
+	a *= mix(1.0, 0.18, inside);
+	ALBEDO = c * a;
 }

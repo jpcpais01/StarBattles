@@ -115,6 +115,7 @@ static func explosion(arena: Node, pos: Vector3, size: float, color: Color, debr
 	parent.add_child(f)
 	f.global_position = pos
 	f.explosion(size, color)
+	SpaceEnv.flash(pos, size)
 	sparks(arena, pos, Vector3.ZERO, Color(1.0, 0.75, 0.4), int(40 * size / 10.0), true)
 	if debris:
 		_debris(parent, pos, size)

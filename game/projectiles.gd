@@ -24,7 +24,7 @@ func _ready() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
-	multimesh.mesh = Mats.bolt_mesh()
+	multimesh.mesh = Mats.quad()
 	multimesh.instance_count = MAX
 	multimesh.visible_instance_count = 0
 	material_override = Mats.bolt()
@@ -123,8 +123,8 @@ func _process(_delta: float) -> void:
 		var p := _pos[i]
 		# Bolts get a little fatter far away so they stay readable.
 		var dist := p.distance_to(cam_pos)
-		var w := (0.55 + dist * 0.0012) * _size[i]
-		var l := ((6.0 + dist * 0.006) * _len[i] + 1.0) * sqrt(_size[i])
+		var w := (0.7 + dist * 0.0014) * _size[i]
+		var l := ((11.0 + dist * 0.012) * _len[i] + 1.0) * sqrt(_size[i])
 		var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT
 		var b := Basis.looking_at(dir, up)
 		var bx := b.x * w

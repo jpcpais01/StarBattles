@@ -24,10 +24,10 @@ func _process(delta: float) -> void:
 		queue_free()
 
 
-func add_glow(color: Color, size: float, life: float, energy := 3.0) -> void:
+func add_glow(color: Color, size: float, life: float, energy := 3.0, spikes := 0.0) -> void:
 	var g := MeshInstance3D.new()
 	g.mesh = Mats.quad()
-	g.material_override = Mats.glow(color, energy, 1.8)
+	g.material_override = Mats.glow(color, energy, 1.8, spikes)
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	g.scale = Vector3.ONE * size
 	add_child(g)
@@ -46,8 +46,9 @@ func _tick_glows(_delta: float) -> void:
 
 func explosion(size: float, color: Color) -> void:
 	_size = size
-	add_glow(Color(1.0, 0.85, 0.6), size * 4.0, 0.35, 6.0)
-	add_glow(color, size * 7.0, 0.6, 2.0)
+	# Detonation flash (with lens spikes), then the wider hot glow.
+	add_glow(Color(1.0, 0.92, 0.8), size * 5.0, 0.22, 7.0, 0.6)
+	add_glow(color, size * 6.0, 0.7, 1.6)
 	_duration = 2.2
 	var n := int(clampf(size * 0.8, 4.0, 9.0))
 	for i in n:
@@ -70,7 +71,7 @@ func explosion(size: float, color: Color) -> void:
 	_light = OmniLight3D.new()
 	_light.light_color = Color(1.0, 0.6, 0.3)
 	_light.omni_range = size * 9.0
-	_light.light_energy = 8.0
+	_light.light_energy = 5.0
 	add_child(_light)
 	_tick = _tick_explosion
 
@@ -87,7 +88,7 @@ func _tick_explosion(delta: float) -> void:
 	var st := clampf(_life / 0.8, 0.0, 1.0)
 	_shock.scale = Vector3.ONE * _size * (1.0 + st * 9.0)
 	_shock.set_instance_shader_parameter("life", st)
-	_light.light_energy = 8.0 * pow(maxf(0.0, 1.0 - _life / 0.9), 2.0)
+	_light.light_energy = 5.0 * pow(maxf(0.0, 1.0 - _life / 0.9), 2.0)
 
 
 func debris(mesh: Mesh, velocity: Vector3, scale_f: float) -> void:

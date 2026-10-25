@@ -63,7 +63,7 @@ func _build() -> void:
 	add_child(logo)
 	logo.add_child(UI.caption("A 10 v 10 space combat game", 18, App.ACCENT))
 	logo.add_child(UI.label(App.GAME_TITLE, 150, Color.WHITE, "display"))
-	logo.add_child(UI.caption("Saturn front", 22, Color(1, 1, 1, 0.55)))
+	logo.add_child(UI.caption("Europa orbit", 22, Color(1, 1, 1, 0.55)))
 	UI.fade_in(logo, 1.0, 0.25, Vector2(-30, 0))
 	# Bottom: status, thin glowing bar, tip.
 	var bottom := VBoxContainer.new()

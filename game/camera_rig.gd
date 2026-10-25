@@ -23,7 +23,7 @@ var _cine_angle := 0.0
 
 func _ready() -> void:
 	near = 0.3
-	far = 20000.0
+	far = 60000.0
 	_noise.frequency = 2.2
 	current = true
 	_build_dust()

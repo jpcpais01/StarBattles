@@ -87,7 +87,7 @@ void sky() {
 	} else if (AT_HALF_RES_PASS) {
 		COLOR = galaxy(d);
 	} else {
-		vec3 s = star_layer(d, 140.0, 0.035, 18.0) * 1.4 + star_layer(d, 360.0, 0.11, 22.0) * 0.55;
+		vec3 s = star_layer(d, 140.0, 0.03, 18.0) * 1.4 + star_layer(d, 320.0, 0.022, 16.0) * 0.5;
 		COLOR = HALF_RES_COLOR.rgb + s * star_brightness + sun(d);
 	}
 }

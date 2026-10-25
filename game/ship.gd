@@ -316,7 +316,7 @@ func _fly(delta: float, input: Dictionary) -> void:
 	var speed: float = def.boost_speed if boosting else lerpf(def.min_speed, def.speed, throttle)
 	var fwd := -global_basis.z
 	var strafe: float = input.get("strafe", 0.0)
-	var desired := fwd * speed + global_basis.x * strafe * def.speed * 0.35
+	var desired: Vector3 = fwd * speed + global_basis.x * strafe * def.speed * 0.35
 	# Flight assist: velocity chases the nose, leaving a little drift.
 	velocity = velocity.lerp(desired, 1.0 - exp(-def.accel * delta))
 	global_position += velocity * delta

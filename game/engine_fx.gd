@@ -27,7 +27,7 @@ func setup(pos: Vector3, r: float, c: Color, with_trail := true) -> void:
 	add_child(flame)
 	core = MeshInstance3D.new()
 	core.mesh = Mats.quad()
-	core.material_override = Mats.glow(c.lerp(Color.WHITE, 0.5), 5.0, 2.0)
+	core.material_override = Mats.glow(c.lerp(Color.WHITE, 0.45), 3.6, 2.0)
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	core.position = Vector3(0, 0, 0.15)
 	add_child(core)
@@ -41,11 +41,11 @@ func setup(pos: Vector3, r: float, c: Color, with_trail := true) -> void:
 		trail = Trail3D.new()
 		trail.source = self
 		trail.width = r * 1.3
-		trail.lifetime = 0.45
+		trail.lifetime = 0.34
 		trail.max_points = 18
 		trail.min_step = 2.0
 		trail.color = Color(1, 1, 1, 0.6)
-		trail.material_override = Mats.trail(c, 1.4)
+		trail.material_override = Mats.trail(c, 1.1)
 		add_child(trail)
 
 
@@ -58,10 +58,10 @@ func _process(delta: float) -> void:
 	flame.scale = Vector3(w, w, length)
 	flame.set_instance_shader_parameter("thrust", _smooth_thrust)
 	flame.set_instance_shader_parameter("boost", boost)
-	core.scale = Vector3.ONE * radius * (2.2 + _smooth_thrust * 0.8 + boost * 1.2) * flicker
+	core.scale = Vector3.ONE * radius * (1.5 + _smooth_thrust * 0.6 + boost * 1.0) * flicker
 	core.set_instance_shader_parameter("intensity", 0.6 + _smooth_thrust * 0.6 + boost * 0.6)
-	halo.scale = Vector3.ONE * radius * (6.0 + boost * 6.0)
+	halo.scale = Vector3.ONE * radius * (4.2 + boost * 4.5)
 	halo.set_instance_shader_parameter("intensity", 0.25 + _smooth_thrust * 0.3 + boost * 0.7)
 	if trail:
-		trail.width = radius * (1.0 + boost * 0.8)
-		trail.color.a = 0.25 + _smooth_thrust * 0.35 + boost * 0.4
+		trail.width = radius * (0.7 + boost * 0.6)
+		trail.color.a = 0.18 + _smooth_thrust * 0.3 + boost * 0.4

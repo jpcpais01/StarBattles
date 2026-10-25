@@ -19,7 +19,7 @@ const SH_SHOCK := preload("res://shaders/shockwave.gdshader")
 const SH_ASTEROID := preload("res://shaders/asteroid.gdshader")
 
 
-static func _get(key: String, maker: Callable) -> Material:
+static func _cached(key: String, maker: Callable) -> Material:
 	if not _cache.has(key):
 		_cache[key] = maker.call()
 	return _cache[key]
@@ -35,55 +35,55 @@ static func _shader(sh: Shader, params: Dictionary) -> ShaderMaterial:
 
 static func hull(team: int, glow: Color) -> ShaderMaterial:
 	var paint := App.team_color(team)
-	return _get("hull_%d_%s" % [team, glow.to_html()], func():
+	return _cached("hull_%d_%s" % [team, glow.to_html()], func():
 		return _shader(SH_HULL, {"paint_color": paint * Color(0.85, 0.85, 0.85), "glow_color": glow}))
 
 
 static func hull_neutral() -> ShaderMaterial:
-	return _get("hull_neutral", func():
+	return _cached("hull_neutral", func():
 		return _shader(SH_HULL, {"paint_color": Color(0.75, 0.76, 0.8), "glow_color": Color(1.0, 0.85, 0.6)}))
 
 
 static func glass() -> ShaderMaterial:
-	return _get("glass", func(): return _shader(SH_GLASS, {}))
+	return _cached("glass", func(): return _shader(SH_GLASS, {}))
 
 
 static func flame(color: Color) -> ShaderMaterial:
-	return _get("flame_" + color.to_html(), func(): return _shader(SH_FLAME, {"color": color}))
+	return _cached("flame_" + color.to_html(), func(): return _shader(SH_FLAME, {"color": color}))
 
 
 static func glow(color: Color, energy := 3.0, softness := 2.2) -> ShaderMaterial:
-	return _get("glow_%s_%.2f_%.2f" % [color.to_html(), energy, softness], func():
+	return _cached("glow_%s_%.2f_%.2f" % [color.to_html(), energy, softness], func():
 		return _shader(SH_GLOW, {"color": color, "energy": energy, "softness": softness}))
 
 
 static func trail(color: Color, energy := 1.6) -> ShaderMaterial:
-	return _get("trail_%s_%.2f" % [color.to_html(), energy], func():
+	return _cached("trail_%s_%.2f" % [color.to_html(), energy], func():
 		return _shader(SH_TRAIL, {"color": color, "energy": energy}))
 
 
 static func smoke() -> ShaderMaterial:
-	return _get("smoke", func(): return _shader(SH_SMOKE, {}))
+	return _cached("smoke", func(): return _shader(SH_SMOKE, {}))
 
 
 static func bolt() -> ShaderMaterial:
-	return _get("bolt", func(): return _shader(SH_BOLT, {}))
+	return _cached("bolt", func(): return _shader(SH_BOLT, {}))
 
 
 static func beam(color: Color) -> ShaderMaterial:
-	return _get("beam_" + color.to_html(), func(): return _shader(SH_BEAM, {"color": color}))
+	return _cached("beam_" + color.to_html(), func(): return _shader(SH_BEAM, {"color": color}))
 
 
 static func fireball() -> ShaderMaterial:
-	return _get("fireball", func(): return _shader(SH_FIREBALL, {}))
+	return _cached("fireball", func(): return _shader(SH_FIREBALL, {}))
 
 
 static func shockwave(color: Color) -> ShaderMaterial:
-	return _get("shock_" + color.to_html(), func(): return _shader(SH_SHOCK, {"color": color}))
+	return _cached("shock_" + color.to_html(), func(): return _shader(SH_SHOCK, {"color": color}))
 
 
 static func asteroid(variant: int) -> ShaderMaterial:
-	return _get("asteroid_%d" % variant, func():
+	return _cached("asteroid_%d" % variant, func():
 		var palettes := [
 			[Color(0.32, 0.29, 0.27), Color(0.16, 0.15, 0.14), Color(0.45, 0.4, 0.34)],
 			[Color(0.36, 0.33, 0.31), Color(0.2, 0.18, 0.17), Color(0.5, 0.46, 0.42)],

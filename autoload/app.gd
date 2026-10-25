@@ -28,6 +28,8 @@ var build_date := ""
 var is_mobile := false
 var is_dedicated := false
 var autotest_seconds := 0.0
+## Autotest only: join this host instead of starting a local battle.
+var autotest_join := ""
 ## Config for the next match, read by the arena when it loads.
 var match_config: Dictionary = {}
 var current_scene_path := ""
@@ -51,6 +53,8 @@ func _ready() -> void:
 			var parts := a.split("=")
 			if parts.size() > 1:
 				autotest_seconds = float(parts[1])
+		elif a.begins_with("--join="):
+			autotest_join = a.get_slice("=", 1)
 	_build_fade_layer()
 	get_tree().auto_accept_quit = true
 	get_tree().quit_on_go_back = false
@@ -78,7 +82,7 @@ func _build_fade_layer() -> void:
 	add_child(_layer)
 	_fade = ColorRect.new()
 	_fade.color = Color(0.008, 0.01, 0.02, 1.0)
-	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fade.modulate.a = 0.0
 	_layer.add_child(_fade)

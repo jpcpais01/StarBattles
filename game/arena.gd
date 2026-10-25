@@ -141,6 +141,7 @@ func set_local_ship(s: Ship) -> void:
 
 func on_local_spawn(s: Ship, initial: bool) -> void:
 	input.throttle = 0.65
+	input.recenter_aim()
 	camera.look_back = false
 	hud.on_spawn(initial)
 	Sfx.play("spawn", -4.0)

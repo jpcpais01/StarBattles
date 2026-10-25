@@ -66,14 +66,27 @@ func _draw() -> void:
 		var ap := cam.unproject_position(me.aim_point)
 		if ap.distance_to(center) > 3.0:
 			_diamond(ap, 6.0 * scale_f, Color(App.ACCENT, 0.9), 1.5 * scale_f)
-	# Mouse virtual stick.
+	# Mouse virtual stick: a reticle that stays where you put it.
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var st: Vector2 = arena.input.mouse_stick()
-		if st.length() > 0.04:
-			var p := center + st * 150.0 * scale_f
-			draw_line(center, p, Color(1, 1, 1, 0.12), 1.0, true)
-			draw_arc(p, 7.0 * scale_f, 0, TAU, 20, Color(1, 1, 1, 0.75), 1.5 * scale_f, true)
-		draw_arc(center, 150.0 * scale_f, 0, TAU, 64, Color(1, 1, 1, 0.04), 1.0, true)
+		var dz: float = arena.input.mouse_deadzone()
+		var sr := 150.0 * scale_f
+		draw_arc(center, sr, 0, TAU, 64, Color(1, 1, 1, 0.05), 1.0, true)
+		if dz > 0.01:
+			draw_arc(center, sr * dz, 0, TAU, 24, Color(1, 1, 1, 0.08), 1.0, true)
+		var mag := st.length()
+		if mag > dz:
+			var k := (mag - dz) / (1.0 - dz)
+			var p := center + st * sr
+			var col := Color(1, 1, 1, 0.75).lerp(Color(App.ACCENT, 0.95), k)
+			draw_line(center + st.normalized() * sr * maxf(dz, 0.12), p, Color(col, 0.1 + 0.25 * k), 1.5 * scale_f, true)
+			draw_arc(p, 7.0 * scale_f, 0, TAU, 20, col, 1.5 * scale_f, true)
+			draw_circle(p, 1.5 * scale_f, col)
+			# Light the rim in the turn direction; brightest when pinned at the edge.
+			var a := st.angle()
+			draw_arc(center, sr, a - 0.35, a + 0.35, 16, Color(col, 0.15 + 0.45 * k * k), 2.0 * scale_f, true)
+		elif mag > 0.01:
+			draw_arc(center + st * sr, 5.0 * scale_f, 0, TAU, 16, Color(1, 1, 1, 0.3), 1.0 * scale_f, true)
 	# Hull (left) / shield (right) / boost (bottom) arcs.
 	var ar := 92.0 * scale_f
 	var w := 4.0 * scale_f

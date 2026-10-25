@@ -19,15 +19,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		var rel: Vector2 = event.relative * sens
 		if Settings.get_value("invert_y", false):
 			rel.y = -rel.y
-		_stick += rel
-		if _stick.length() > 1.0:
-			_stick = _stick.normalized()
+		# The reticle stays wherever you leave it, like a joystick held over.
+		_stick = (_stick + rel).limit_length(1.0)
+	elif event.is_action_pressed("recenter_aim"):
+		recenter_aim()
 	elif event.is_action_pressed("target_next"):
 		_cycle_target()
 
 
 func mouse_stick() -> Vector2:
 	return _stick
+
+
+func mouse_deadzone() -> float:
+	return clampf(float(Settings.get_value("mouse_deadzone", 0.05)), 0.0, 0.4)
+
+
+func recenter_aim() -> void:
+	_stick = Vector2.ZERO
 
 
 func get_input(ship: Ship, delta: float) -> Dictionary:
@@ -42,16 +51,18 @@ func get_input(ship: Ship, delta: float) -> Dictionary:
 		# Touches are mirrored as mouse clicks; only trust the gamepad here.
 		fire1 = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.5
 		fire2 = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT) > 0.5
-	# Mouse virtual stick with a small deadzone and gentle recentring.
+	# Mouse virtual stick: the ship keeps turning toward the reticle until you
+	# bring it back inside the deadzone (or press X / middle mouse).
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var s := _stick
-		var dz := 0.06
+		var dz := mouse_deadzone()
 		if s.length() > dz:
 			var k := (s.length() - dz) / (1.0 - dz)
-			s = s.normalized() * k * k * 0.6 + s.normalized() * k * 0.4
+			s = s.normalized() * (k * k * 0.5 + k * 0.5)
 			yaw += s.x
 			pitch -= s.y
-		_stick = _stick.move_toward(Vector2.ZERO, delta * 0.25)
+		if Settings.get_value("mouse_recenter", false):
+			_stick = _stick.move_toward(Vector2.ZERO, delta * 0.8)
 	# Gamepad / keys.
 	pitch += Input.get_axis("pitch_down", "pitch_up") * (-1.0 if Settings.get_value("invert_y", false) else 1.0)
 	yaw += Input.get_axis("yaw_left", "yaw_right")

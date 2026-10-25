@@ -31,7 +31,7 @@ const SHIPS := {
 	"wraith": {
 		"name": "WRAITH",
 		"role": "Interceptor",
-		"desc": "A blade of a ship. Twin beam lasers and a monstrous reactor — fast, nimble, fragile.",
+		"desc": "A blade of a ship. Twin beam lasers, a seeker pod and a monstrous reactor — fast, nimble, fragile.",
 		"builder": "wraith",
 		"model": "",
 		"hull": 700.0, "shield": 450.0, "shield_regen": 70.0, "shield_delay": 2.6,
@@ -44,6 +44,7 @@ const SHIPS := {
 		"hardpoints": [
 			{"pos": Vector3(-0.95, -0.55, -3.4), "weapon": "laser", "gimbal": 5.0, "scale": 0.9},
 			{"pos": Vector3(0.95, -0.55, -3.4), "weapon": "laser", "gimbal": 5.0, "scale": 0.9},
+			{"pos": Vector3(0.0, -0.62, 1.0), "weapon": "missile_pod", "gimbal": 0.0, "scale": 0.8},
 		],
 		"engines": [
 			{"pos": Vector3(0.0, 0.1, 5.6), "radius": 1.05},
@@ -81,7 +82,7 @@ const SHIPS := {
 	"silverwing": {
 		"name": "SILVERWING",
 		"role": "Strike Fighter",
-		"desc": "Swept-wing striker with twin-barrel cannons on each wingtip. Wide, stable gun platform with a triple-nozzle drive.",
+		"desc": "Swept-wing striker with twin-barrel cannons on each wingtip and a belly seeker pod. Wide, stable gun platform with a triple-nozzle drive.",
 		"builder": "vanguard",
 		"model": "res://assets/ships/silverwing/silverwing.glb",
 		"hull": 900.0, "shield": 520.0, "shield_regen": 60.0, "shield_delay": 3.0,
@@ -96,6 +97,7 @@ const SHIPS := {
 		"hardpoints": [
 			{"pos": Vector3(-7.49, -0.41, 1.65), "weapon": "pulse_cannon", "gimbal": 8.0, "scale": 1.0},
 			{"pos": Vector3(7.5, -0.41, 1.7), "weapon": "pulse_cannon", "gimbal": 8.0, "scale": 1.0},
+			{"pos": Vector3(0.0, -0.82, 0.3), "weapon": "missile_pod", "gimbal": 0.0, "scale": 0.95},
 		],
 		"engines": [
 			{"pos": Vector3(-1.37, 0.1, 7.93), "radius": 0.33},

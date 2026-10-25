@@ -443,6 +443,7 @@ func _autotest_report() -> void:
 		owners.append(p.owner_team)
 	print("[Autotest] t=%.1f mode=%s phase=%d score=%s kills=%s alive=%d points=%s asteroids=%d bolts=%d fps=%d" % [
 		time, mode, ctl.phase, str(ctl.scores), str(k), alive, str(owners), field.records.size(), projectiles.count(), Engine.get_frames_per_second()])
+	print("[Autotest] missiles fired=%d homing=%d hits=%d" % [Missile.stats.fired, Missile.stats.homing, Missile.stats.hits])
 	if siege:
 		var down := []
 		for p in siege.parts():

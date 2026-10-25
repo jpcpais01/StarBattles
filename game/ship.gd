@@ -50,6 +50,7 @@ var best_streak := 0
 # alive, team, velocity, global_position).
 var target = null
 var lock_target = null
+var target_manual := false  # the pilot picked `target` by hand (F / T)
 var lock_progress := 0.0
 var incoming_missiles := 0
 
@@ -73,6 +74,8 @@ var _bank := 0.0
 var _flash := 0.0
 var _fire2_was := false
 var _missile_queue: Array = []
+var missile_event := 0  # 1 locked salvo, 2 dumbfire, 3 not ready (HUD)
+var missile_event_t := 0.0
 var _beam_dmg_acc: Dictionary = {}
 var _lock_beep := 0.0
 
@@ -202,7 +205,8 @@ func _layout() -> Dictionary:
 		var pos := _v3(h.get("pos", [0, 0, 0]))
 		var parts := {"base": [], "barrel": [], "muzzles": []}
 		for key in [["base_node", "base"], ["barrel_node", "barrel"]]:
-			var n := root.find_child(str(h.get(key[0], "")), true, false) as Node3D
+			var node_name := str(h.get(key[0], ""))
+			var n := root.find_child(node_name, true, false) as Node3D if node_name != "" else null
 			if n:
 				var xf := n.global_transform if n.is_inside_tree() else _model_xform(root, n)
 				n.get_parent().remove_child(n)
@@ -215,7 +219,9 @@ func _layout() -> Dictionary:
 		elif h.has("muzzle"):
 			parts.muzzles.append(_v3(h.muzzle) - pos)
 		hps.append({"pos": pos, "weapon": str(h.get("weapon", "pulse_cannon")), "gimbal": float(h.get("gimbal", 6.0)),
-			"turret": bool(h.get("turret", false)), "scale": 1.0, "parts": parts})
+			"turret": bool(h.get("turret", false)), "scale": float(h.get("scale", 1.0)),
+			# No model nodes named: build the stock procedural weapon instead.
+			"parts": parts if not (parts.base.is_empty() and parts.barrel.is_empty()) else {}})
 	var engs := []
 	for e in spec.get("engines", []):
 		engs.append({"pos": _v3(e.get("pos", [0, 0, 0])), "radius": float(e.get("radius", 0.8))})
@@ -326,6 +332,7 @@ func _fly(delta: float, input: Dictionary) -> void:
 	firing_secondary = input.get("fire2", false)
 	aim_point = input.get("aim", global_position + fwd * 600.0)
 	target = input.get("target", target)
+	target_manual = input.get("target_manual", false)
 
 
 func _collide(delta: float, arena: Arena) -> void:
@@ -412,14 +419,20 @@ func _update_weapons(delta: float, arena: Arena, input: Dictionary) -> void:
 	# Secondary trigger fires every ready pod; locked salvos home in.
 	var pressed := firing_secondary and not _fire2_was
 	_fire2_was = firing_secondary
-	if pressed:
+	if pressed and has_missiles():
 		var tid := arena.target_id_of(lock_target) if lock_target and lock_progress >= 1.0 else -1
+		var fired := false
 		for i in mounts.size():
 			var m := mounts[i]
 			if m.wdef.type == "missile" and m.cooldown <= 0.0:
 				m.cooldown = m.wdef.reload
+				fired = true
 				for s in int(m.wdef.salvo):
 					_missile_queue.append([s * 0.18, i, tid])
+		# HUD feedback: "SEEKERS AWAY", "DUMBFIRE" or "RELOADING".
+		missile_event = (1 if tid >= 0 else 2) if fired else 3
+		missile_event_t = 1.2
+	missile_event_t = maxf(0.0, missile_event_t - delta)
 	for q in _missile_queue:
 		q[0] -= delta
 		if q[0] <= 0.0:
@@ -474,18 +487,25 @@ func _update_lock(delta: float, arena: Arena) -> void:
 		return
 	var wdef := ShipLibrary.weapon("missile_pod")
 	var cone := cos(deg_to_rad(wdef.lock_cone))
-	var fwd := -global_basis.z
+	# Once the seeker has a target it holds on through a wider cone, so a
+	# little wobble doesn't throw away a nearly finished lock.
+	var hold := cos(deg_to_rad(wdef.lock_cone * 1.6))
+	var rng: float = wdef.lock_range
 	var candidate: Node3D = null
-	if target and is_instance_valid(target) and target.alive and target.team != team:
-		var to: Vector3 = target.global_position - global_position
-		if to.length() < wdef.lock_range and fwd.dot(to.normalized()) > cone:
-			candidate = target
-	if candidate == null:
+	var picked_ok := _lockable(target, cone, rng)
+	if picked_ok and (target_manual or lock_target == null or lock_target == target):
+		candidate = target
+	elif _lockable(lock_target, hold, rng * 1.1):
+		candidate = lock_target
+	elif picked_ok:
+		candidate = target
+	else:
+		var fwd := -global_basis.z
 		var best := -1.0
 		for s in arena.lock_candidates(team):
-			var to: Vector3 = s.global_position - global_position
+			var to: Vector3 = PlayerInput.target_pos(s) - global_position
 			var dist := to.length()
-			if dist > wdef.lock_range:
+			if dist > rng:
 				continue
 			var dot := fwd.dot(to / dist)
 			if dot > cone and dot > best:
@@ -500,12 +520,20 @@ func _update_lock(delta: float, arena: Arena) -> void:
 		if is_local_player():
 			_lock_beep -= delta
 			if lock_progress < 1.0 and _lock_beep <= 0.0:
-				_lock_beep = 0.18
-				Sfx.play("lock", -10.0, 1.0)
+				_lock_beep = lerpf(0.22, 0.08, lock_progress)
+				Sfx.play("lock", -10.0, 1.0 + lock_progress * 0.25)
 			elif lock_progress >= 1.0 and was < 1.0:
 				Sfx.play("lock", -4.0, 1.5)
 	else:
 		lock_progress = 0.0
+
+
+func _lockable(t, cone_cos: float, rng: float) -> bool:
+	if t == null or not is_instance_valid(t) or not t.alive or t.team == team:
+		return false
+	var to: Vector3 = PlayerInput.target_pos(t) - global_position
+	var d := to.length()
+	return d > 1.0 and d < rng and (-global_basis.z).dot(to / d) > cone_cos
 
 
 ## Beams are visual on every peer; only the server applies their damage.

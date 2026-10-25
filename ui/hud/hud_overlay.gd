@@ -66,8 +66,26 @@ func _draw() -> void:
 		var ap := cam.unproject_position(me.aim_point)
 		if ap.distance_to(center) > 3.0:
 			_diamond(ap, 6.0 * scale_f, Color(App.ACCENT, 0.9), 1.5 * scale_f)
+	# Mouse aim: the reticle marks where you're pointing; the ship's nose
+	# (crosshair) swings onto it. Glows when aim assist is helping.
+	if arena.input.mouse_aim_mode() and not arena.camera.look_back:
+		var wp: Vector3 = arena.input.aim_world_point(me)
+		if not cam.is_position_behind(wp):
+			var rp := cam.unproject_position(wp)
+			var aw: float = arena.input.assist_weight
+			var rc := Color(1, 1, 1, 0.85).lerp(Color(App.ACCENT, 1.0), clampf(aw * 2.0, 0.0, 1.0))
+			var rr := 11.0 * scale_f
+			draw_arc(rp, rr, 0, TAU, 32, rc, 1.75 * scale_f, true)
+			for i in 4:
+				var dv := Vector2.from_angle(i * PI * 0.5)
+				draw_line(rp + dv * rr * 0.45, rp + dv * rr * 0.8, rc, 1.5 * scale_f, true)
+			var off := rp.distance_to(center)
+			if off > r * 1.2:
+				# A faint tether from nose to reticle shows which way you're turning.
+				var dirv := (rp - center) / off
+				draw_line(center + dirv * r * 1.1, rp - dirv * rr * 1.3, Color(rc, 0.18), 1.0 * scale_f, true)
 	# Mouse virtual stick: a reticle that stays where you put it.
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var st: Vector2 = arena.input.mouse_stick()
 		var dz: float = arena.input.mouse_deadzone()
 		var sr := 150.0 * scale_f
@@ -117,15 +135,7 @@ func _draw() -> void:
 		var a := clampf(float(d[1]) / 1.2, 0.0, 1.0)
 		var col := Color(0.5, 0.8, 1.0, a) if d[2] else Color(1.0, 0.25, 0.2, a)
 		draw_arc(center, 150.0 * scale_f, ang - 0.28, ang + 0.28, 16, col, 6.0 * scale_f, true)
-	# Lock ring.
-	var lt = me.lock_target
-	if lt and is_instance_valid(lt) and lt.alive and not cam.is_position_behind(lt.global_position):
-		var lp := cam.unproject_position(lt.aim_center() if lt is MothershipPart else lt.global_position)
-		var lr := 34.0 * scale_f
-		var lc := App.BAD if me.lock_progress >= 1.0 else App.WARN
-		draw_arc(lp, lr, -PI * 0.5, -PI * 0.5 + TAU * me.lock_progress, 48, lc, 2.5 * scale_f, true)
-		if me.lock_progress >= 1.0:
-			_text(lp + Vector2(0, -lr - 10.0 * scale_f), "LOCKED", 15.0 * scale_f, lc, _font)
+	_draw_seekers(cam, me, center, ar, scale_f)
 	# Incoming missiles.
 	var incoming := 0
 	for m in arena.missiles:
@@ -179,13 +189,15 @@ func _draw_ships(cam: Camera3D, me: Ship, scale_f: float) -> void:
 		var p := cam.unproject_position(s.global_position)
 		var on_screen := not behind and Rect2(Vector2.ZERO, size).grow(-20).has_point(p)
 		if not on_screen:
-			if enemy and dist < 1400.0:
-				_edge_arrow(cam, s.global_position, col, scale_f, s == tgt)
+			if enemy and (dist < 1400.0 or s == tgt):
+				_edge_arrow(cam, s.global_position, col, scale_f, s == tgt, "%dm" % int(dist) if s == tgt else "")
 			continue
 		var px := clampf(s.radius * 900.0 / maxf(dist, 1.0), 10.0, 60.0) * scale_f
 		if enemy:
 			if s == tgt:
 				_brackets(p, px + 6.0 * scale_f, Color(col, 1.0), 2.0 * scale_f)
+				if arena.input.manual_target == s:
+					_text(Vector2(p.x, p.y - px - 18.0 * scale_f), "TARGET", 12.0 * scale_f, Color(col.lightened(0.35), 0.95), _font_small)
 				# Shield/hull bars and range.
 				var bw := 64.0 * scale_f
 				var by := p.y + px + 16.0 * scale_f
@@ -214,7 +226,7 @@ func _draw_ships(cam: Camera3D, me: Ship, scale_f: float) -> void:
 				_text(p + Vector2(0, -px - 22.0 * scale_f), s.pilot_name, 13.0 * scale_f, Color(col.lightened(0.3), a), _font_small)
 
 
-func _edge_arrow(cam: Camera3D, world: Vector3, col: Color, scale_f: float, is_target: bool) -> void:
+func _edge_arrow(cam: Camera3D, world: Vector3, col: Color, scale_f: float, is_target: bool, label := "") -> void:
 	var center := size * 0.5
 	var local := cam.global_basis.inverse() * (world - cam.global_position)
 	var dir := Vector2(local.x, -local.y)
@@ -227,6 +239,10 @@ func _edge_arrow(cam: Camera3D, world: Vector3, col: Color, scale_f: float, is_t
 	var s := (12.0 if is_target else 8.0) * scale_f
 	var pts := PackedVector2Array([p + Vector2(s, 0).rotated(ang), p + Vector2(-s * 0.6, s * 0.7).rotated(ang), p + Vector2(-s * 0.6, -s * 0.7).rotated(ang)])
 	draw_colored_polygon(pts, Color(col, 0.9 if is_target else 0.55))
+	if is_target:
+		draw_arc(p, s * 1.7, 0, TAU, 24, Color(col, 0.6 + 0.3 * sin(_t * 6.0)), 1.5 * scale_f, true)
+		if label != "":
+			_text(p - dir * 30.0 * scale_f, label, 13.0 * scale_f, Color(1, 1, 1, 0.8), _font_small)
 
 
 func _draw_points(cam: Camera3D, me: Ship, scale_f: float) -> void:
@@ -256,3 +272,67 @@ func _draw_points(cam: Camera3D, me: Ship, scale_f: float) -> void:
 			var d := int(me.global_position.distance_to(world))
 			var inside := d < CapturePoint.RADIUS
 			_text(p + Vector2(0, r + 14.0 * scale_f), "INSIDE" if inside else "%dm" % d, 12.0 * scale_f, Color(1, 1, 1, 0.65), _font_small)
+
+
+## Seeker missiles: lock cone around the nose, lock ring + closing brackets on
+## the target, and a status line under the speed readout.
+func _draw_seekers(cam: Camera3D, me: Ship, center: Vector2, ar: float, scale_f: float) -> void:
+	if not me.has_missiles():
+		return
+	var wdef := ShipLibrary.weapon("missile_pod")
+	var lt = me.lock_target
+	var has_lock: bool = lt != null and is_instance_valid(lt) and lt.alive
+	var locked: bool = has_lock and me.lock_progress >= 1.0
+	var ready := me.missile_ready()
+	# Lock cone: keep the target inside this circle to build a lock.
+	var cone_px := tan(deg_to_rad(float(wdef.lock_cone))) / tan(deg_to_rad(cam.fov * 0.5)) * size.y * 0.5
+	var cone_col := Color(1, 1, 1, 0.07)
+	if has_lock:
+		cone_col = Color(App.BAD if locked else App.WARN, 0.22)
+	for i in 4:
+		var a0 := PI * 0.25 + i * PI * 0.5
+		draw_arc(center, cone_px, a0 - 0.32, a0 + 0.32, 12, cone_col, 1.5 * scale_f, true)
+	if has_lock:
+		var wp: Vector3 = PlayerInput.target_pos(lt)
+		if not cam.is_position_behind(wp):
+			var lp := cam.unproject_position(wp)
+			var lr := 34.0 * scale_f
+			var lc := App.BAD if locked else App.WARN
+			draw_arc(lp, lr, 0, TAU, 48, Color(lc, 0.15), 2.0 * scale_f, true)
+			draw_arc(lp, lr, -PI * 0.5, -PI * 0.5 + TAU * me.lock_progress, 48, lc, 2.5 * scale_f, true)
+			# Four ticks that close in as the lock completes.
+			var tick := lerpf(lr * 2.2, lr * 1.15, me.lock_progress)
+			for i in 4:
+				var dv := Vector2.from_angle(PI * 0.25 + i * PI * 0.5 + (0.0 if locked else _t * 2.0))
+				draw_line(lp + dv * tick, lp + dv * (tick + 9.0 * scale_f), lc, 2.0 * scale_f, true)
+			if locked:
+				var pulse := 0.75 + 0.25 * sin(_t * 10.0)
+				_diamond(lp, lr * 0.55, Color(lc, pulse), 2.0 * scale_f)
+				_text(lp + Vector2(0, -lr - 12.0 * scale_f), "LOCKED", 15.0 * scale_f, lc, _font)
+	# Status line.
+	var line := ""
+	var col := Color(1, 1, 1, 0.55)
+	if me.missile_event_t > 0.0 and me.missile_event > 0:
+		match me.missile_event:
+			1:
+				line = "SEEKERS AWAY"
+				col = App.BAD
+			2:
+				line = "DUMBFIRE  ·  NO LOCK"
+				col = Color(1, 1, 1, 0.75)
+			3:
+				line = "SEEKERS RELOADING"
+				col = App.WARN
+	elif not ready:
+		line = "SEEKERS  %d%%" % int(me.missile_reload_fraction() * 100.0)
+		col = Color(1, 1, 1, 0.4)
+	elif locked:
+		line = "LOCKED  ·  " + ("MISSILE" if App.is_mobile else "RMB") + " TO FIRE"
+		col = Color(App.BAD, 0.75 + 0.25 * sin(_t * 10.0))
+	elif has_lock:
+		line = "LOCKING  %d%%" % int(me.lock_progress * 100.0)
+		col = App.WARN
+	else:
+		line = "SEEKERS READY"
+		col = Color(1, 1, 1, 0.4)
+	_text(center + Vector2(0, ar + 88.0 * scale_f), line, 14.0 * scale_f, col, _font)

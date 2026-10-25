@@ -1,9 +1,13 @@
 {
 	"groups": [
 		{
-			"title": "A new app icon",
+			"title": "Battle over Europa",
 			"time": "2026-10-25 · 17:00 UTC",
 			"entries": [
+				"The war has moved to Jupiter. Battles now rage 2,000 km above Europa, its cracked ice filling half the sky below you, with Jupiter hanging in the distance at its true size and the other Galilean moons strung along its orbital plane. Some battles are fought over volcanic Io or Ganymede instead. Every world is built from NASA maps at real scale.",
+				"Deep space finally looks like deep space: true black with crisp pin-point stars, and a tiny, blinding Sun. Sunlight bouncing off Europa now lights the underside of every ship, Jupiter casts a warm glow, and polished hulls reflect the moon and Jupiter around them. Your eyes also adapt: stare into the sunlit moon, the Sun or a close explosion and the battlefield dims, then slowly opens back up when you turn to the dark. Bloom and tone mapping were retuned so bright things glow without washing everything out.",
+				"All-new weapon and explosion effects: plasma bolts are white-hot streaks with a coloured sheath (and a blinding point when one is coming straight at you), rail shots leave rippling ion trails, missiles burn hot and leave sunlit smoke, and explosions flash, billow from white-hot to orange to dark soot, and throw glowing embers.",
+				"Shields ripple with hexagonal cells that light up as the impact spreads, capture zones are now subtle sensor fields around a real relay station with a rising fill and shimmering edge, and asteroids are dark cratered rock with sharp sunlit relief.",
 				"Star Battles has its own app icon: a Silverwing streaking past Jupiter and Io with its cannons blazing. It shows on your Android home screen (including Android 13+ themed icons) and on the Windows .exe, taskbar and window."
 			]
 		},

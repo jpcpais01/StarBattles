@@ -1,6 +1,6 @@
 class_name Arena
 extends Node3D
-## Root of a match. Builds the Saturn theatre over a few frames (heavy
+## Root of a match. Builds the Jovian theatre over a few frames (heavy
 ## mesh work on worker threads behind the loading fade), owns the shared
 ## systems, and routes gameplay events to the HUD, camera and audio.
 
@@ -55,6 +55,7 @@ func _ready() -> void:
 	var seed := int(cfg.get("seed", randi()))
 	mode = "siege" if str(cfg.get("mode", "")) == "siege" else "conquest"
 	env = SpaceEnv.new()
+	env.home_moon = SpaceEnv.moon_for_seed(seed)
 	add_child(env)
 	fx_root = Node3D.new()
 	fx_root.name = "FX"

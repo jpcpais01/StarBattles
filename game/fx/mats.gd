@@ -52,9 +52,9 @@ static func flame(color: Color) -> ShaderMaterial:
 	return _cached("flame_" + color.to_html(), func(): return _shader(SH_FLAME, {"color": color}))
 
 
-static func glow(color: Color, energy := 3.0, softness := 2.2) -> ShaderMaterial:
-	return _cached("glow_%s_%.2f_%.2f" % [color.to_html(), energy, softness], func():
-		return _shader(SH_GLOW, {"color": color, "energy": energy, "softness": softness}))
+static func glow(color: Color, energy := 3.0, softness := 2.2, spikes := 0.0) -> ShaderMaterial:
+	return _cached("glow_%s_%.2f_%.2f_%.2f" % [color.to_html(), energy, softness, spikes], func():
+		return _shader(SH_GLOW, {"color": color, "energy": energy, "softness": softness, "spikes": spikes}))
 
 
 ## Solid glowing surface (reactor cores, generator orbs, energy rings).
@@ -98,9 +98,10 @@ static func shockwave(color: Color) -> ShaderMaterial:
 static func asteroid(variant: int) -> ShaderMaterial:
 	return _cached("asteroid_%d" % variant, func():
 		var palettes := [
-			[Color(0.32, 0.29, 0.27), Color(0.16, 0.15, 0.14), Color(0.45, 0.4, 0.34)],
-			[Color(0.36, 0.33, 0.31), Color(0.2, 0.18, 0.17), Color(0.5, 0.46, 0.42)],
-			[Color(0.28, 0.25, 0.22), Color(0.12, 0.11, 0.1), Color(0.5, 0.38, 0.28)],
+			# Carbonaceous (C-type), stony (S-type) and metal-rich (M-type) rock.
+			[Color(0.2, 0.196, 0.19), Color(0.09, 0.088, 0.086), Color(0.36, 0.34, 0.32)],
+			[Color(0.27, 0.24, 0.205), Color(0.12, 0.107, 0.094), Color(0.44, 0.39, 0.33)],
+			[Color(0.23, 0.23, 0.24), Color(0.1, 0.1, 0.108), Color(0.42, 0.42, 0.44)],
 		]
 		var p: Array = palettes[variant % palettes.size()]
 		return _shader(SH_ASTEROID, {"rock_a": p[0], "rock_b": p[1], "rock_c": p[2]}))

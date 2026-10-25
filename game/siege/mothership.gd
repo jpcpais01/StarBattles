@@ -61,7 +61,7 @@ func setup(a: Arena, t: int, xform: Transform3D) -> void:
 		surface.append([Vector3(s[0], s[1], s[2]), Vector3(s[3], s[4], s[5])])
 	hull_mat = ShaderMaterial.new()
 	hull_mat.shader = SH_HULL
-	hull_mat.set_shader_parameter("paint_color", App.team_color(t) * Color(0.82, 0.82, 0.82))
+	hull_mat.set_shader_parameter("paint_color", App.team_color(t).lerp(Color(0.36, 0.4, 0.46), 0.4).darkened(0.15))
 	hull_mat.set_shader_parameter("glow_color", App.team_color(t).lerp(Color.WHITE, 0.25))
 	_build_hull()
 	_build_engines()
@@ -290,13 +290,20 @@ func set_strain(k: float) -> void:
 		shield_mat.set_shader_parameter("strain", k)
 
 
+## Sets a hull material parameter on the hull and on every part's own copy.
+func _hull_param(param: String, v: float) -> void:
+	hull_mat.set_shader_parameter(param, v)
+	for p in parts:
+		p.set_param(param, v)
+
+
 func set_damage(k: float) -> void:
 	_damage = k
-	hull_mat.set_shader_parameter("damage", k)
+	_hull_param("damage", k)
 
 
 func set_alert(on: bool) -> void:
-	hull_mat.set_shader_parameter("alert", 1.0 if on else 0.0)
+	_hull_param("alert", 1.0 if on else 0.0)
 
 
 func collapse_shield(animated: bool) -> void:
@@ -446,10 +453,8 @@ func _break_apart(local_core: Vector3) -> void:
 		var vel := away.normalized() * randf_range(10.0, 22.0) + Vector3(randf_range(-4, 4), randf_range(-6, 6), randf_range(-4, 4))
 		var spin := Vector3(randf_range(-0.05, 0.05), randf_range(-0.03, 0.03), randf_range(-0.06, 0.06))
 		_breakup.append([s, vel, spin, c])
-	for mi in section_meshes:
-		var t := create_tween()
-		t.tween_method(func(v: float): mi.set_instance_shader_parameter("burn", v), 0.0, 0.85, 7.0)
-	hull_mat.set_shader_parameter("lights_on", 0.0)
+	create_tween().tween_method(func(v: float): hull_mat.set_shader_parameter("burn", v), 0.0, 0.85, 7.0)
+	_hull_param("lights_on", 0.0)
 
 
 ## Defenders held: spool the drives and jump out in a flash.
@@ -496,7 +501,7 @@ func _process(delta: float) -> void:
 		for e in engines:
 			if not warped:
 				e.thrust = idle
-		hull_mat.set_shader_parameter("engine_power", 0.7 + 0.3 * sin(_t * 0.7))
+		_hull_param("engine_power", 0.7 + 0.3 * sin(_t * 0.7))
 		# Cosmetic secondary blasts once the armour is badly hurt.
 		if _damage > 0.35 and not App.is_dedicated:
 			_secondary_t -= delta

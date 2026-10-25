@@ -45,6 +45,8 @@ var slide: Node3D
 var muzzles: Array[Node3D] = []
 var hit_area: Area3D
 var meshes: Array[GeometryInstance3D] = []
+## This part's own copy of the hull material (burn and hit flash are per part).
+var mat: ShaderMaterial
 var _muzzle_i := 0
 var _recoil := 0.0
 var _flash: MeshInstance3D
@@ -59,6 +61,8 @@ var _t := randf() * 10.0
 
 
 func setup(i: int, k: String, t: int, pos: Vector3, up: Vector3, material: Material) -> void:
+	mat = (material as ShaderMaterial).duplicate() if material is ShaderMaterial else null
+	material = mat if mat else material
 	index = i
 	kind = k
 	team = t
@@ -365,7 +369,6 @@ func set_exposed(on: bool) -> void:
 			tw.tween_property(s, "global_position", start.origin + out * 900.0, 6.0).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 			tw.tween_property(s, "rotation", s.rotation + Vector3(randf_range(-4, 4), randf_range(-4, 4), randf_range(-4, 4)), 6.0)
 			tw.chain().tween_callback(func(): s.visible = false)
-			s.set_instance_shader_parameter("burn", 0.6)
 		_glow.visible = true
 		_glow_ring.visible = true
 	else:
@@ -377,6 +380,11 @@ func set_exposed(on: bool) -> void:
 		_glow_ring.visible = false
 
 
+func set_param(param: String, v: float) -> void:
+	if mat:
+		mat.set_shader_parameter(param, v)
+
+
 func destroy() -> void:
 	alive = false
 	hp = 0.0
@@ -385,8 +393,7 @@ func destroy() -> void:
 		hit_area.set_deferred("monitorable", false)
 	if App.is_dedicated:
 		return
-	for m in meshes:
-		m.set_instance_shader_parameter("burn", 1.0)
+	set_param("burn", 1.0)
 	if is_turret():
 		# Barrels droop, the housing sags off its ring.
 		var tw := create_tween().set_parallel(true)
@@ -403,8 +410,7 @@ func restore() -> void:
 	alive = true
 	hp = max_hp
 	hit_area.set_deferred("monitorable", true)
-	for m in meshes:
-		m.set_instance_shader_parameter("burn", 0.0)
+	set_param("burn", 0.0)
 
 
 func _process(delta: float) -> void:
@@ -418,8 +424,7 @@ func _process(delta: float) -> void:
 			_flash.visible = false
 	if _hit_flash > 0.0:
 		_hit_flash = maxf(0.0, _hit_flash - delta * 5.0)
-		for m in meshes:
-			m.set_instance_shader_parameter("flash", _hit_flash)
+		set_param("flash", _hit_flash)
 	if not alive:
 		return
 	var hurt := 1.0 - hp / max_hp

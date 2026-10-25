@@ -41,6 +41,7 @@ var showcase: Node3D
 var ship: Ship
 var _ship_id := ""
 var capital: Mothership
+var _capital_fill: OmniLight3D
 var _rocks: Array[Node3D] = []
 var _t := 0.0
 
@@ -388,25 +389,34 @@ func _show_capital(on: bool) -> void:
 	if not on:
 		capital.queue_free()
 		capital = null
+		_capital_fill.queue_free()
 		camera.h_offset = 0.0
 		camera.v_offset = 0.0
 		return
-	# Broadside-on at true scale, three quarters toward the camera.
+	# Broadside-on at true scale, bow angled slightly toward the camera.
 	var side := env.saturn_direction.cross(Vector3.UP).normalized()
-	var z := -side.rotated(Vector3.UP, deg_to_rad(28.0))
+	var z := -side.rotated(Vector3.UP, deg_to_rad(-20.0))
 	var b := Basis(Vector3.UP.cross(z).normalized(), Vector3.UP, z)
 	capital = Mothership.new()
 	add_child(capital)
 	capital.setup(null, SiegeRules.DEFENDERS, Transform3D(b, Vector3.ZERO))
+	# Saturn sits behind it, so the near side would be in shadow: a soft fill.
+	_capital_fill = OmniLight3D.new()
+	_capital_fill.light_color = Color(0.7, 0.8, 1.0)
+	_capital_fill.omni_range = 4200.0
+	_capital_fill.omni_attenuation = 0.6
+	_capital_fill.light_energy = 1.6
+	_capital_fill.position = -env.saturn_direction * 1500.0 + Vector3(0, 900.0, 0)
+	add_child(_capital_fill)
 
 
 func _frame_capital(delta: float) -> void:
 	var look := env.saturn_direction.rotated(Vector3.UP, deg_to_rad(-10.0 + sin(_t * 0.04) * 6.0))
 	look = look.rotated(look.cross(Vector3.UP).normalized(), deg_to_rad(-9.0 + sin(_t * 0.03) * 2.0))
-	camera.global_position = -look * 2900.0 + Vector3(0, 380.0, 0)
+	camera.global_position = -look * 2300.0 + Vector3(0, 320.0, 0)
 	camera.look_at(camera.global_position + look, Vector3.UP)
-	camera.h_offset = -560.0
-	camera.v_offset = 120.0
+	camera.h_offset = -620.0
+	camera.v_offset = 60.0
 	capital.position = Vector3(0, sin(_t * 0.25) * 6.0, 0)
 	for p in capital.parts:
 		if p.is_turret():

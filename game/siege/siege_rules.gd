@@ -17,8 +17,8 @@ const ATTACKERS := 1
 ## Kill-feed / damage id for the mothership's own guns.
 const MOTHERSHIP_ID := -2
 const TIME_LIMIT := 720.0
-const TICKETS := 110
-const STAGE_BONUS_TICKETS := 25
+const TICKETS := 95
+const STAGE_BONUS_TICKETS := 20
 const ARMOR := 50000.0
 const STATE_RATE := 10.0
 const TURRET_THINK := 0.3

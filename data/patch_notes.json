@@ -1,6 +1,16 @@
 {
 	"groups": [
 		{
+			"title": "Mothership Siege",
+			"time": "2026-10-25 · 15:00 UTC",
+			"entries": [
+				"New mode: Mothership Siege. The IRON VANGUARD, a 1.5 km carrier bristling with sixteen flak and heavy cannon turrets, hangs off Saturn under a shield bubble. AEGIS flies escort, KRONOS brings it down. Pick a side from the new SIEGE tile on the home screen, or switch the mode in a multiplayer lobby.",
+				"Break the carrier in three stages: knock out the four shield generators, hammer the hull armour as breaches blow open and fires spread, then destroy the reactor once its shutters tear away. Attackers share a pool of reinforcements that grows each time a stage falls; defenders win if the clock runs out or the attack runs dry.",
+				"Watch it go: when the reactor fails, explosions race along the hull and the IRON VANGUARD breaks apart into burning sections. If the defenders hold, it lights its engines and jumps to warp.",
+				"Turrets track and lead you, so jink. Your HUD marks every generator, turret and the reactor, the radar shows the carrier's outline, and AI pilots on both sides fly strafing runs, escorts and guard patrols."
+			]
+		},
+		{
 			"title": "New ship: Silverwing",
 			"time": "2026-10-25 · 14:00 UTC",
 			"entries": [

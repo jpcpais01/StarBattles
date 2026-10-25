@@ -260,7 +260,7 @@ func on_peer_left(peer: int) -> void:
 		if s.owner_peer == peer and not s.is_bot:
 			var team: int = s.team
 			_remove_ship(s.ship_id)
-			var r := _record(1, BOT_NAMES[randi() % BOT_NAMES.size()], team, ShipLibrary.SHIP_ORDER[randi() % 3], true)
+			var r := _record(1, BOT_NAMES[randi() % BOT_NAMES.size()], team, ShipLibrary.SHIP_ORDER[randi() % ShipLibrary.SHIP_ORDER.size()], true)
 			_create_ship(r)
 			if online():
 				_send("_net_add_ship", [r])

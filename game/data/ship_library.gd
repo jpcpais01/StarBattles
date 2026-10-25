@@ -78,9 +78,34 @@ const SHIPS := {
 			{"pos": Vector3(2.6, -1.3, 8.7), "radius": 0.95},
 		],
 	},
+	"silverwing": {
+		"name": "SILVERWING",
+		"role": "Strike Fighter",
+		"desc": "Swept-wing striker with twin-barrel cannons on each wingtip. Wide, stable gun platform with a triple-nozzle drive.",
+		"builder": "vanguard",
+		"model": "res://assets/ships/silverwing/silverwing.glb",
+		"hull": 900.0, "shield": 520.0, "shield_regen": 60.0, "shield_delay": 3.0,
+		"speed": 125.0, "boost_speed": 245.0, "min_speed": 30.0, "accel": 1.8,
+		"pitch_rate": 1.7, "yaw_rate": 1.25, "roll_rate": 2.9, "agility": 5.2,
+		"boost_energy": 105.0, "boost_drain": 28.0, "boost_regen": 18.0,
+		"radius": 8.4, "camera_dist": 24.0, "camera_height": 5.5,
+		"engine_color": Color(0.4, 0.82, 1.0),
+		"stats": {"speed": 0.74, "armor": 0.5, "agility": 0.72, "firepower": 0.7},
+		## Hardpoints and engines come from silverwing.ship.json (made by
+		## tools/ship_import); these are only used if the model is missing.
+		"hardpoints": [
+			{"pos": Vector3(-7.49, -0.41, 1.65), "weapon": "pulse_cannon", "gimbal": 8.0, "scale": 1.0},
+			{"pos": Vector3(7.5, -0.41, 1.7), "weapon": "pulse_cannon", "gimbal": 8.0, "scale": 1.0},
+		],
+		"engines": [
+			{"pos": Vector3(-1.37, 0.1, 7.93), "radius": 0.33},
+			{"pos": Vector3(0.03, 0.24, 7.64), "radius": 0.32},
+			{"pos": Vector3(1.41, 0.1, 7.93), "radius": 0.32},
+		],
+	},
 }
 
-const SHIP_ORDER := ["vanguard", "wraith", "bastion"]
+const SHIP_ORDER := ["vanguard", "silverwing", "wraith", "bastion"]
 
 ## type: projectile | beam | rail | missile.
 ## group: 0 = primary trigger, 1 = secondary trigger.
